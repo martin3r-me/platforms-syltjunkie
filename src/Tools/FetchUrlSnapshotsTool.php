@@ -22,7 +22,7 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
 
     public function getDescription(): string
     {
-        return 'POST /syltjunkie/url_snapshots/fetch - Ruft Keyword-Rankings, Traffic und Domain Authority für Entity-URLs via DataForSEO ab und erstellt Snapshots. Nutzt getRankedKeywords() pro Domain. Kostet ~$0.10 pro URL. Filter: entity_url_id (einzeln) oder entity_id (alle URLs einer Entity) oder alle URLs ohne aktuellen Snapshot.';
+        return 'POST /syltjunkie/url_snapshots/fetch - Ruft Keyword-Rankings und Traffic für Entity-URLs via DataForSEO ab. Dedupliziert nach Domain: pro Domain nur 1 API-Call (~$0.10), alle Entity-URLs derselben Domain teilen die Daten. Snapshots werden mit scope=domain markiert, damit bei Aggregation nicht doppelt gezählt wird.';
     }
 
     public function getSchema(): array
@@ -44,23 +44,23 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
                 ],
                 'platform' => [
                     'type' => 'string',
-                    'description' => 'Optional: Nur URLs dieser Platform. Default: website (nur eigene Domains haben sinnvolle Ranked-Keywords).',
+                    'description' => 'Optional: Nur URLs dieser Platform. Default: website.',
                     'enum' => ['website', 'google_maps', 'tripadvisor', 'instagram', 'facebook', 'booking', 'yelp', 'other', 'all'],
                     'default' => 'website',
                 ],
                 'max_urls' => [
                     'type' => 'integer',
-                    'description' => 'Optional: Maximale Anzahl URLs pro Aufruf. Default: 5. Max: 20.',
-                    'default' => 5,
+                    'description' => 'Optional: Maximale Anzahl URLs pro Aufruf. Default: 10. Max: 50.',
+                    'default' => 10,
                 ],
                 'keywords_limit' => [
                     'type' => 'integer',
-                    'description' => 'Optional: Max Keywords pro URL. Default: 50. Max: 200.',
+                    'description' => 'Optional: Max Keywords pro Domain. Default: 50. Max: 200.',
                     'default' => 50,
                 ],
                 'dry_run' => [
                     'type' => 'boolean',
-                    'description' => 'Optional: Nur anzeigen welche URLs verarbeitet werden. Default: false.',
+                    'description' => 'Optional: Nur anzeigen was passieren würde. Default: false.',
                     'default' => false,
                 ],
             ],
@@ -80,7 +80,7 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
                 return ToolResult::error('AUTH_ERROR', 'Kein User im Kontext gefunden.');
             }
 
-            $maxUrls = min((int) ($arguments['max_urls'] ?? 5), 20);
+            $maxUrls = min((int) ($arguments['max_urls'] ?? 10), 50);
             $keywordsLimit = min((int) ($arguments['keywords_limit'] ?? 50), 200);
             $dryRun = (bool) ($arguments['dry_run'] ?? false);
             $platformFilter = $arguments['platform'] ?? 'website';
@@ -111,55 +111,71 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
                 ]);
             }
 
+            // Nach Domain gruppieren — 1 API-Call pro Domain
+            $byDomain = [];
+            foreach ($urls as $entityUrl) {
+                $domain = parse_url($entityUrl->url, PHP_URL_HOST);
+                if (!$domain) {
+                    continue;
+                }
+                // www. normalisieren
+                $domain = preg_replace('/^www\./', '', strtolower($domain));
+                $byDomain[$domain][] = $entityUrl;
+            }
+
             if ($dryRun) {
+                $domainSummary = [];
+                foreach ($byDomain as $domain => $domainUrls) {
+                    $domainSummary[] = [
+                        'domain' => $domain,
+                        'entity_urls' => array_map(fn($u) => [
+                            'id' => $u->id,
+                            'url' => $u->url,
+                            'entity_name' => $u->entity?->name,
+                        ], $domainUrls),
+                        'entity_url_count' => count($domainUrls),
+                    ];
+                }
+
                 return ToolResult::success([
                     'dry_run' => true,
-                    'urls_to_process' => $urls->map(fn($u) => [
-                        'id' => $u->id,
-                        'url' => $u->url,
-                        'platform' => $u->platform,
-                        'entity_name' => $u->entity?->name,
-                    ])->toArray(),
-                    'estimated_cost_cents' => $urls->count() * 10,
+                    'unique_domains' => count($byDomain),
+                    'total_urls' => $urls->count(),
+                    'domains' => $domainSummary,
+                    'estimated_cost_cents' => count($byDomain) * 10,
+                    'note' => 'Kosten basieren auf unique Domains, nicht URLs.',
                 ]);
             }
 
             $api = app(DataForSeoApiService::class);
             $results = [];
             $snapshotsCreated = 0;
+            $apiCallsMade = 0;
             $today = now()->toDateString();
 
-            foreach ($urls as $entityUrl) {
-                $urlResult = [
-                    'entity_url_id' => $entityUrl->id,
-                    'url' => $entityUrl->url,
-                    'platform' => $entityUrl->platform,
-                    'entity_name' => $entityUrl->entity?->name,
-                ];
-
-                // Prüfe ob heute schon ein vollständiger Snapshot existiert (nicht nur SERP-Discovery)
-                $existingSnapshot = SjUrlSnapshot::where('entity_url_id', $entityUrl->id)
+            foreach ($byDomain as $domain => $domainUrls) {
+                // Prüfe ob ALLE URLs dieser Domain heute schon vollständige Snapshots haben
+                $urlIds = array_map(fn($u) => $u->id, $domainUrls);
+                $existingCount = SjUrlSnapshot::whereIn('entity_url_id', $urlIds)
                     ->where('captured_at', $today)
                     ->whereNotNull('organic_traffic_estimate')
-                    ->first();
+                    ->count();
 
-                if ($existingSnapshot) {
-                    $urlResult['skipped'] = 'Snapshot für heute existiert bereits.';
-                    $urlResult['snapshot_id'] = $existingSnapshot->id;
-                    $results[] = $urlResult;
+                if ($existingCount === count($domainUrls)) {
+                    foreach ($domainUrls as $entityUrl) {
+                        $results[] = [
+                            'entity_url_id' => $entityUrl->id,
+                            'url' => $entityUrl->url,
+                            'domain' => $domain,
+                            'entity_name' => $entityUrl->entity?->name,
+                            'skipped' => 'Alle URLs dieser Domain haben bereits Snapshots für heute.',
+                        ];
+                    }
                     continue;
                 }
 
                 try {
-                    // Domain aus URL extrahieren
-                    $domain = parse_url($entityUrl->url, PHP_URL_HOST);
-                    if (!$domain) {
-                        $urlResult['error'] = 'Ungültige URL — Domain nicht extrahierbar.';
-                        $results[] = $urlResult;
-                        continue;
-                    }
-
-                    // Ranked Keywords für die Domain abrufen
+                    // 1 API-Call pro unique Domain
                     $rankedResults = $api->getRankedKeywords(
                         $context->user,
                         $domain,
@@ -167,6 +183,7 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
                         null,
                         $keywordsLimit
                     );
+                    $apiCallsMade++;
 
                     // Keywords aufbereiten
                     $keywords = [];
@@ -180,63 +197,95 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
                             'competition' => $rk->competition,
                         ];
 
-                        // Grobe Traffic-Schätzung: SV * CTR basierend auf Position
                         if ($rk->searchVolume && $rk->position) {
                             $ctr = $this->estimateCtr($rk->position);
                             $totalTraffic += (int) round($rk->searchVolume * $ctr);
                         }
                     }
 
-                    // Bestehenden Discovery-Snapshot für heute updaten oder neuen erstellen
-                    $snapshot = SjUrlSnapshot::where('entity_url_id', $entityUrl->id)
-                        ->where('captured_at', $today)
-                        ->first();
+                    $rawRankedData = array_map(fn($r) => $r->toArray(), $rankedResults);
 
-                    if ($snapshot) {
-                        // Bestehenden Discovery-Snapshot mit vollen Daten anreichern
-                        $existingKeywords = $snapshot->keywords ?? [];
-                        $mergedKeywords = $this->mergeKeywords($existingKeywords, $keywords);
-
-                        $snapshot->update([
-                            'keywords' => $mergedKeywords,
-                            'organic_traffic_estimate' => $totalTraffic ?: null,
-                            'raw_response' => array_merge($snapshot->raw_response ?? [], [
-                                'ranked_keywords' => array_map(fn($r) => $r->toArray(), $rankedResults),
-                            ]),
-                        ]);
-                    } else {
-                        $snapshot = SjUrlSnapshot::create([
-                            'team_id' => $rootTeamId,
+                    // Snapshot für JEDE Entity-URL dieser Domain erstellen/updaten
+                    foreach ($domainUrls as $entityUrl) {
+                        $urlResult = [
                             'entity_url_id' => $entityUrl->id,
-                            'captured_at' => $today,
-                            'keywords' => $keywords,
-                            'organic_traffic_estimate' => $totalTraffic ?: null,
-                            'raw_response' => [
-                                'source' => 'ranked_keywords',
-                                'domain' => $domain,
-                                'ranked_keywords' => array_map(fn($r) => $r->toArray(), $rankedResults),
-                            ],
-                        ]);
+                            'url' => $entityUrl->url,
+                            'domain' => $domain,
+                            'entity_name' => $entityUrl->entity?->name,
+                        ];
+
+                        // Bestehenden Snapshot für heute prüfen (z.B. SERP-Discovery)
+                        $snapshot = SjUrlSnapshot::where('entity_url_id', $entityUrl->id)
+                            ->where('captured_at', $today)
+                            ->first();
+
+                        if ($snapshot && $snapshot->organic_traffic_estimate !== null) {
+                            $urlResult['skipped'] = 'Snapshot für heute existiert bereits.';
+                            $urlResult['snapshot_id'] = $snapshot->id;
+                            $results[] = $urlResult;
+                            continue;
+                        }
+
+                        if ($snapshot) {
+                            // Discovery-Snapshot anreichern
+                            $existingKeywords = $snapshot->keywords ?? [];
+                            $mergedKeywords = $this->mergeKeywords($existingKeywords, $keywords);
+
+                            $snapshot->update([
+                                'keywords' => $mergedKeywords,
+                                'organic_traffic_estimate' => $totalTraffic ?: null,
+                                'raw_response' => array_merge($snapshot->raw_response ?? [], [
+                                    'scope' => 'domain',
+                                    'domain' => $domain,
+                                    'ranked_keywords' => $rawRankedData,
+                                ]),
+                            ]);
+                        } else {
+                            $snapshot = SjUrlSnapshot::create([
+                                'team_id' => $rootTeamId,
+                                'entity_url_id' => $entityUrl->id,
+                                'captured_at' => $today,
+                                'keywords' => $keywords,
+                                'organic_traffic_estimate' => $totalTraffic ?: null,
+                                'raw_response' => [
+                                    'source' => 'ranked_keywords',
+                                    'scope' => 'domain',
+                                    'domain' => $domain,
+                                    'ranked_keywords' => $rawRankedData,
+                                ],
+                            ]);
+                        }
+
+                        $entityUrl->update(['last_checked_at' => now()]);
+
+                        $urlResult['snapshot_id'] = $snapshot->id;
+                        $urlResult['keywords_count'] = count($snapshot->keywords);
+                        $urlResult['organic_traffic_estimate'] = $totalTraffic;
+                        $urlResult['shared_domain_data'] = count($domainUrls) > 1;
+                        $snapshotsCreated++;
+
+                        $results[] = $urlResult;
                     }
-
-                    $entityUrl->update(['last_checked_at' => now()]);
-
-                    $urlResult['snapshot_id'] = $snapshot->id;
-                    $urlResult['keywords_count'] = count($keywords);
-                    $urlResult['organic_traffic_estimate'] = $totalTraffic;
-                    $snapshotsCreated++;
-
                 } catch (\Throwable $e) {
-                    $urlResult['error'] = $e->getMessage();
+                    foreach ($domainUrls as $entityUrl) {
+                        $results[] = [
+                            'entity_url_id' => $entityUrl->id,
+                            'url' => $entityUrl->url,
+                            'domain' => $domain,
+                            'entity_name' => $entityUrl->entity?->name,
+                            'error' => $e->getMessage(),
+                        ];
+                    }
                 }
-
-                $results[] = $urlResult;
             }
 
             return ToolResult::success([
                 'processed' => count($results),
                 'snapshots_created' => $snapshotsCreated,
-                'estimated_cost_cents' => $snapshotsCreated * 10,
+                'api_calls_made' => $apiCallsMade,
+                'unique_domains' => count($byDomain),
+                'estimated_cost_cents' => $apiCallsMade * 10,
+                'deduplication_note' => 'Snapshots mit scope=domain teilen Daten. Bei Aggregation pro Domain nur 1x zählen.',
                 'urls' => $results,
             ]);
         } catch (\Throwable $e) {
@@ -267,12 +316,10 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
     {
         $byKeyword = [];
 
-        // Ranked Keywords zuerst (vollständigere Daten)
         foreach ($ranked as $kw) {
             $byKeyword[strtolower($kw['keyword'])] = $kw;
         }
 
-        // Discovery-Keywords nur hinzufügen wenn nicht schon durch Ranked abgedeckt
         foreach ($existing as $kw) {
             $key = strtolower($kw['keyword']);
             if (!isset($byKeyword[$key])) {

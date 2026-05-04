@@ -1,0 +1,27 @@
+{
+    "name": "martin3r/platforms-syltjunkie",
+    "description": "Platform Package for Syltjunkie - Autonomous niche platform for Sylt with Entity Graph, Living Layer, Content Engine, SEO Intelligence & Self-Service Auth",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Platform Team",
+            "email": "team@platform.com"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "Platform\\Syltjunkie\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Platform\\Syltjunkie\\SyltjunkieServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

@@ -76,6 +76,13 @@ class SyltjunkieServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Syltjunkie\Tools\CreateEntityTool());
             $registry->register(new \Platform\Syltjunkie\Tools\UpdateEntityTool());
             $registry->register(new \Platform\Syltjunkie\Tools\CreateEntityRelationshipTool());
+
+            // Entity URLs & Snapshots
+            $registry->register(new \Platform\Syltjunkie\Tools\ListEntityUrlsTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\CreateEntityUrlTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\UpdateEntityUrlTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\ListUrlSnapshotsTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\CreateUrlSnapshotTool());
         } catch (\Throwable $e) {}
     }
 

@@ -68,4 +68,9 @@ class SjEntity extends Model
     {
         return $this->hasMany(SjEntityRelationship::class, 'target_entity_id');
     }
+
+    public function entityUrls(): HasMany
+    {
+        return $this->hasMany(SjEntityUrl::class, 'entity_id');
+    }
 }

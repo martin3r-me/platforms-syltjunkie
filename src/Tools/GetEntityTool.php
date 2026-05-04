@@ -41,6 +41,11 @@ class GetEntityTool implements ToolContract, ToolMetadataContract
                     'description' => 'Optional: Beziehungen (ausgehend + eingehend) mitladen. Default: true.',
                     'default' => true,
                 ],
+                'include_urls' => [
+                    'type' => 'boolean',
+                    'description' => 'Optional: Entity-URLs mit letztem Snapshot mitladen. Default: false.',
+                    'default' => false,
+                ],
             ],
             'required' => ['entity_id'],
         ];
@@ -109,6 +114,34 @@ class GetEntityTool implements ToolContract, ToolMetadataContract
                     'source_entity_id' => $r->source_entity_id,
                     'source_entity_name' => $r->sourceEntity?->name,
                 ])->toArray();
+            }
+
+            $includeUrls = $arguments['include_urls'] ?? false;
+            if ($includeUrls) {
+                $entity->load(['entityUrls' => function ($q) {
+                    $q->where('is_active', true)->with(['snapshots' => fn($sub) => $sub->orderByDesc('captured_at')->limit(1)]);
+                }]);
+
+                $data['urls'] = $entity->entityUrls->map(function ($eu) {
+                    $item = [
+                        'id' => $eu->id,
+                        'url' => $eu->url,
+                        'platform' => $eu->platform,
+                        'is_primary' => $eu->is_primary,
+                        'last_checked_at' => $eu->last_checked_at?->toIso8601String(),
+                    ];
+                    if ($eu->snapshots->isNotEmpty()) {
+                        $snap = $eu->snapshots->first();
+                        $item['latest_snapshot'] = [
+                            'captured_at' => $snap->captured_at->toDateString(),
+                            'keywords_count' => is_array($snap->keywords) ? count($snap->keywords) : 0,
+                            'organic_traffic_estimate' => $snap->organic_traffic_estimate,
+                            'domain_authority' => $snap->domain_authority,
+                            'backlinks_count' => $snap->backlinks_count,
+                        ];
+                    }
+                    return $item;
+                })->toArray();
             }
 
             return ToolResult::success($data);

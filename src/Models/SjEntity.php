@@ -5,7 +5,9 @@ namespace Platform\Syltjunkie\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 use Symfony\Component\Uid\UuidV7;
 
@@ -72,5 +74,44 @@ class SjEntity extends Model
     public function entityUrls(): HasMany
     {
         return $this->hasMany(SjEntityUrl::class, 'entity_id');
+    }
+
+    public function keywords(): BelongsToMany
+    {
+        return $this->belongsToMany(SjKeyword::class, 'sj_keyword_entity_relevance', 'entity_id', 'keyword_id')
+            ->withPivot(['attribution_type', 'confidence', 'source'])
+            ->withTimestamps();
+    }
+
+    public function keywordGaps(): HasMany
+    {
+        return $this->hasMany(SjKeywordGap::class, 'entity_id');
+    }
+
+    public function scores(): HasMany
+    {
+        return $this->hasMany(SjEntityScore::class, 'entity_id');
+    }
+
+    public function latestScore(): HasOne
+    {
+        return $this->hasOne(SjEntityScore::class, 'entity_id')->latestOfMany('captured_at');
+    }
+
+    public function ctaConfigs(): HasMany
+    {
+        return $this->hasMany(SjEntityCtaConfig::class, 'entity_id');
+    }
+
+    public function ctaEvents(): HasMany
+    {
+        return $this->hasMany(SjCtaEvent::class, 'entity_id');
+    }
+
+    public function contentPieces(): BelongsToMany
+    {
+        return $this->belongsToMany(SjContentPiece::class, 'sj_content_entities', 'entity_id', 'content_piece_id')
+            ->withPivot(['display_order', 'is_primary', 'cta_type', 'cta_override_url'])
+            ->withTimestamps();
     }
 }

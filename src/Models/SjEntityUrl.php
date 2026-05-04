@@ -57,4 +57,9 @@ class SjEntityUrl extends Model
     {
         return $this->hasOne(SjUrlSnapshot::class, 'entity_url_id')->latestOfMany('captured_at');
     }
+
+    public function keywordRankings(): HasMany
+    {
+        return $this->hasMany(SjKeywordRanking::class, 'entity_url_id');
+    }
 }

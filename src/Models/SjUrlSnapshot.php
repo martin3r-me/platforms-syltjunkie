@@ -15,9 +15,14 @@ class SjUrlSnapshot extends Model
         'entity_url_id',
         'captured_at',
         'keywords',
+        'keywords_count',
         'organic_traffic_estimate',
+        'organic_value_cents',
         'domain_authority',
         'backlinks_count',
+        'review_count',
+        'average_rating',
+        'platform_rank',
         'raw_response',
     ];
 
@@ -25,6 +30,7 @@ class SjUrlSnapshot extends Model
         'captured_at' => 'date',
         'keywords' => 'array',
         'raw_response' => 'array',
+        'average_rating' => 'decimal:1',
     ];
 
     protected static function booted(): void

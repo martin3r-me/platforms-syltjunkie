@@ -22,10 +22,251 @@
                 </p>
             </div>
 
+            {{-- SEO Overview Cards (Website-URL) --}}
+            @php
+                $websiteUrl = $entity->entityUrls->firstWhere('platform', 'website');
+                $urlSnapshot = $websiteUrl?->latestSnapshot;
+                $pageSnapshot = $websiteUrl?->latestPageSnapshot;
+            @endphp
+            @if($urlSnapshot || $pageSnapshot)
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                @if($urlSnapshot && $urlSnapshot->keywords_count)
+                <div class="bg-white rounded-lg border border-gray-200 p-3">
+                    <div class="text-[11px] text-gray-400 uppercase tracking-wider">Keywords</div>
+                    <div class="text-lg font-semibold text-gray-900 mt-0.5">{{ number_format($urlSnapshot->keywords_count) }}</div>
+                    <div class="text-[11px] text-gray-400 mt-0.5">rankend auf Google</div>
+                </div>
+                @endif
+                @if($urlSnapshot && $urlSnapshot->organic_traffic_estimate)
+                <div class="bg-white rounded-lg border border-gray-200 p-3">
+                    <div class="text-[11px] text-gray-400 uppercase tracking-wider">Org. Traffic</div>
+                    <div class="text-lg font-semibold text-gray-900 mt-0.5">~{{ number_format($urlSnapshot->organic_traffic_estimate) }}</div>
+                    <div class="text-[11px] text-gray-400 mt-0.5">Besucher/Monat</div>
+                </div>
+                @endif
+                @if($urlSnapshot && $urlSnapshot->organic_value_cents)
+                <div class="bg-white rounded-lg border border-gray-200 p-3">
+                    <div class="text-[11px] text-gray-400 uppercase tracking-wider">Traffic-Wert</div>
+                    <div class="text-lg font-semibold text-gray-900 mt-0.5">&euro;{{ number_format($urlSnapshot->organic_value_cents / 100, 0, ',', '.') }}</div>
+                    <div class="text-[11px] text-gray-400 mt-0.5">monatlicher CPC-Wert</div>
+                </div>
+                @endif
+                @if($pageSnapshot && $pageSnapshot->onpage_score !== null)
+                <div class="bg-white rounded-lg border border-gray-200 p-3">
+                    <div class="text-[11px] text-gray-400 uppercase tracking-wider">OnPage Score</div>
+                    <div class="text-lg font-semibold mt-0.5 {{ $pageSnapshot->onpage_score >= 80 ? 'text-green-600' : ($pageSnapshot->onpage_score >= 50 ? 'text-yellow-600' : 'text-red-600') }}">
+                        {{ number_format($pageSnapshot->onpage_score, 1) }}
+                    </div>
+                    <div class="text-[11px] text-gray-400 mt-0.5">von 100</div>
+                </div>
+                @endif
+            </div>
+            @endif
+
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {{-- Main Info --}}
+                {{-- Main Content --}}
                 <div class="lg:col-span-2 space-y-6">
-                    {{-- Base Fields --}}
+
+                    {{-- Page Snapshot (On-Page SEO Data) --}}
+                    @if($pageSnapshot)
+                    <div class="bg-white rounded-lg border border-gray-200 p-4">
+                        <h2 class="text-[13px] font-semibold text-gray-700 mb-3">On-Page SEO</h2>
+                        <div class="space-y-3">
+                            {{-- Title --}}
+                            @if($pageSnapshot->title)
+                            <div>
+                                <div class="text-[11px] text-gray-400 uppercase tracking-wider">Title</div>
+                                <div class="text-[13px] text-gray-900 mt-0.5 font-medium">{{ $pageSnapshot->title }}</div>
+                                <div class="text-[11px] text-gray-400">{{ mb_strlen($pageSnapshot->title) }} Zeichen</div>
+                            </div>
+                            @endif
+
+                            {{-- Meta Description --}}
+                            @if($pageSnapshot->meta_description)
+                            <div>
+                                <div class="text-[11px] text-gray-400 uppercase tracking-wider">Meta Description</div>
+                                <div class="text-[13px] text-gray-600 mt-0.5">{{ $pageSnapshot->meta_description }}</div>
+                                <div class="text-[11px] text-gray-400">{{ mb_strlen($pageSnapshot->meta_description) }} Zeichen</div>
+                            </div>
+                            @endif
+
+                            {{-- Headings --}}
+                            @if($pageSnapshot->headings)
+                            <div>
+                                <div class="text-[11px] text-gray-400 uppercase tracking-wider mb-1">Headings</div>
+                                @foreach(['h1', 'h2', 'h3'] as $level)
+                                    @if(!empty($pageSnapshot->headings[$level]))
+                                    <div class="ml-{{ $level === 'h1' ? '0' : ($level === 'h2' ? '2' : '4') }} mb-1">
+                                        @foreach($pageSnapshot->headings[$level] as $heading)
+                                        <div class="flex items-baseline gap-2 text-[12px]">
+                                            <span class="text-gray-400 font-mono text-[10px] flex-shrink-0 w-5">{{ strtoupper($level) }}</span>
+                                            <span class="{{ $level === 'h1' ? 'text-gray-900 font-medium' : 'text-gray-600' }}">{{ $heading }}</span>
+                                        </div>
+                                        @endforeach
+                                    </div>
+                                    @endif
+                                @endforeach
+                            </div>
+                            @endif
+
+                            {{-- Metrics Grid --}}
+                            <div class="grid grid-cols-3 gap-3 pt-2 border-t border-gray-100">
+                                @if($pageSnapshot->word_count)
+                                <div>
+                                    <div class="text-[11px] text-gray-400">Wortanzahl</div>
+                                    <div class="text-[13px] text-gray-900 font-medium">{{ number_format($pageSnapshot->word_count) }}</div>
+                                </div>
+                                @endif
+                                @if($pageSnapshot->internal_links_count !== null)
+                                <div>
+                                    <div class="text-[11px] text-gray-400">Interne Links</div>
+                                    <div class="text-[13px] text-gray-900 font-medium">{{ $pageSnapshot->internal_links_count }}</div>
+                                </div>
+                                @endif
+                                @if($pageSnapshot->external_links_count !== null)
+                                <div>
+                                    <div class="text-[11px] text-gray-400">Externe Links</div>
+                                    <div class="text-[13px] text-gray-900 font-medium">{{ $pageSnapshot->external_links_count }}</div>
+                                </div>
+                                @endif
+                                @if($pageSnapshot->image_count !== null)
+                                <div>
+                                    <div class="text-[11px] text-gray-400">Bilder</div>
+                                    <div class="text-[13px] text-gray-900 font-medium">{{ $pageSnapshot->image_count }}</div>
+                                </div>
+                                @endif
+                                @if($pageSnapshot->load_time !== null)
+                                <div>
+                                    <div class="text-[11px] text-gray-400">Ladezeit</div>
+                                    <div class="text-[13px] font-medium {{ $pageSnapshot->load_time <= 2 ? 'text-green-600' : ($pageSnapshot->load_time <= 4 ? 'text-yellow-600' : 'text-red-600') }}">
+                                        {{ number_format($pageSnapshot->load_time, 2) }}s
+                                    </div>
+                                </div>
+                                @endif
+                                @if($pageSnapshot->status_code)
+                                <div>
+                                    <div class="text-[11px] text-gray-400">Status Code</div>
+                                    <div class="text-[13px] font-medium {{ $pageSnapshot->status_code === 200 ? 'text-green-600' : 'text-red-600' }}">
+                                        {{ $pageSnapshot->status_code }}
+                                    </div>
+                                </div>
+                                @endif
+                            </div>
+
+                            <div class="text-[11px] text-gray-300 pt-1">
+                                Snapshot vom {{ $pageSnapshot->captured_at->format('d.m.Y') }}
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
+                    {{-- Keyword Rankings --}}
+                    @if($keywordRankings->count())
+                    <div class="bg-white rounded-lg border border-gray-200 p-4">
+                        <h2 class="text-[13px] font-semibold text-gray-700 mb-3">Keyword Rankings</h2>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-[12px]">
+                                <thead>
+                                    <tr class="text-left text-[10px] text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                                        <th class="pb-2 pr-3">Pos.</th>
+                                        <th class="pb-2 pr-3">Keyword</th>
+                                        <th class="pb-2 pr-3 text-right">Vol.</th>
+                                        <th class="pb-2 pr-3 text-right">CPC</th>
+                                        <th class="pb-2 text-right">KD</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($keywordRankings as $ranking)
+                                    <tr class="border-b border-gray-50 hover:bg-gray-50/50">
+                                        <td class="py-1.5 pr-3">
+                                            <span class="inline-flex items-center justify-center w-6 h-5 rounded text-[11px] font-medium
+                                                {{ $ranking->position <= 3 ? 'bg-green-50 text-green-700' : ($ranking->position <= 10 ? 'bg-blue-50 text-blue-700' : ($ranking->position <= 20 ? 'bg-yellow-50 text-yellow-700' : 'bg-gray-100 text-gray-500')) }}">
+                                                {{ $ranking->position }}
+                                            </span>
+                                            @if($ranking->position_delta !== null)
+                                                <span class="text-[10px] ml-0.5 {{ $ranking->position_delta > 0 ? 'text-green-500' : ($ranking->position_delta < 0 ? 'text-red-500' : 'text-gray-300') }}">
+                                                    {{ $ranking->position_delta > 0 ? '+' . $ranking->position_delta : ($ranking->position_delta < 0 ? $ranking->position_delta : '=') }}
+                                                </span>
+                                            @endif
+                                        </td>
+                                        <td class="py-1.5 pr-3 text-gray-900">{{ $ranking->keyword?->keyword }}</td>
+                                        <td class="py-1.5 pr-3 text-right text-gray-500">
+                                            @if($ranking->keyword?->search_volume)
+                                                {{ number_format($ranking->keyword->search_volume) }}
+                                            @else
+                                                <span class="text-gray-300">&mdash;</span>
+                                            @endif
+                                        </td>
+                                        <td class="py-1.5 pr-3 text-right text-gray-500">
+                                            @if($ranking->keyword?->cpc_cents)
+                                                &euro;{{ number_format($ranking->keyword->cpc_cents / 100, 2) }}
+                                            @else
+                                                <span class="text-gray-300">&mdash;</span>
+                                            @endif
+                                        </td>
+                                        <td class="py-1.5 text-right text-gray-500">
+                                            @if($ranking->keyword?->keyword_difficulty)
+                                                {{ $ranking->keyword->keyword_difficulty }}
+                                            @else
+                                                <span class="text-gray-300">&mdash;</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    @endif
+
+                    {{-- Page Changes --}}
+                    @if($recentChanges->count())
+                    <div class="bg-white rounded-lg border border-gray-200 p-4">
+                        <h2 class="text-[13px] font-semibold text-gray-700 mb-3">Erkannte Seitenänderungen</h2>
+                        <div class="space-y-2">
+                            @foreach($recentChanges as $change)
+                            <div class="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 text-[12px]">
+                                <div class="flex-shrink-0 mt-0.5">
+                                    @if($change->severity === 'major')
+                                        <span class="inline-flex w-2 h-2 rounded-full bg-red-400"></span>
+                                    @elseif($change->severity === 'moderate')
+                                        <span class="inline-flex w-2 h-2 rounded-full bg-yellow-400"></span>
+                                    @else
+                                        <span class="inline-flex w-2 h-2 rounded-full bg-blue-300"></span>
+                                    @endif
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-medium text-gray-900">{{ str_replace('_', ' ', ucfirst($change->change_type)) }}</span>
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded font-medium
+                                            {{ $change->severity === 'major' ? 'bg-red-50 text-red-600' : ($change->severity === 'moderate' ? 'bg-yellow-50 text-yellow-600' : 'bg-blue-50 text-blue-600') }}">
+                                            {{ $change->severity }}
+                                        </span>
+                                        <span class="text-gray-400 text-[11px]">{{ $change->detected_at->format('d.m.Y') }}</span>
+                                    </div>
+                                    @if($change->old_value || $change->new_value)
+                                    <div class="mt-1 text-[11px]">
+                                        @if($change->old_value)
+                                            <div class="text-red-500 line-through truncate">&minus; {{ \Illuminate\Support\Str::limit($change->old_value, 120) }}</div>
+                                        @endif
+                                        @if($change->new_value)
+                                            <div class="text-green-600 truncate">+ {{ \Illuminate\Support\Str::limit($change->new_value, 120) }}</div>
+                                        @endif
+                                    </div>
+                                    @endif
+                                    @if($change->delta !== null)
+                                    <div class="mt-0.5 text-[11px] text-gray-400">
+                                        Delta: <span class="{{ $change->delta > 0 ? 'text-green-600' : 'text-red-500' }}">{{ $change->delta > 0 ? '+' : '' }}{{ $change->delta }}</span>
+                                    </div>
+                                    @endif
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+
+                    {{-- Stammdaten --}}
                     <div class="bg-white rounded-lg border border-gray-200 p-4">
                         <h2 class="text-[13px] font-semibold text-gray-700 mb-3">Stammdaten</h2>
                         <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px]">
@@ -83,8 +324,12 @@
                         </dl>
                     </div>
                     @endif
+                </div>
 
-                    {{-- Entity URLs --}}
+                {{-- Sidebar --}}
+                <div class="space-y-6">
+
+                    {{-- Online-Präsenzen --}}
                     @if($entity->entityUrls->count())
                     <div class="bg-white rounded-lg border border-gray-200 p-4">
                         <h2 class="text-[13px] font-semibold text-gray-700 mb-3">Online-Präsenzen</h2>
@@ -134,25 +379,25 @@
                                         {{ $entityUrl->url }}
                                     </a>
 
-                                    {{-- Latest Snapshot --}}
+                                    {{-- Snapshot metrics --}}
                                     @if($entityUrl->latestSnapshot)
-                                        <div class="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
-                                            <span title="Snapshot vom">{{ $entityUrl->latestSnapshot->captured_at->format('d.m.Y') }}</span>
-                                            @if($entityUrl->latestSnapshot->keywords && count($entityUrl->latestSnapshot->keywords))
-                                                <span title="Keywords">{{ count($entityUrl->latestSnapshot->keywords) }} Keywords</span>
+                                        <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1.5 text-[11px] text-gray-400">
+                                            <span>{{ $entityUrl->latestSnapshot->captured_at->format('d.m.Y') }}</span>
+                                            @if($entityUrl->latestSnapshot->keywords_count)
+                                                <span>{{ $entityUrl->latestSnapshot->keywords_count }} KW</span>
                                             @endif
                                             @if($entityUrl->latestSnapshot->organic_traffic_estimate)
-                                                <span title="Org. Traffic">~{{ number_format($entityUrl->latestSnapshot->organic_traffic_estimate) }} Traffic</span>
+                                                <span>~{{ number_format($entityUrl->latestSnapshot->organic_traffic_estimate) }} Traffic</span>
+                                            @endif
+                                            @if($entityUrl->latestSnapshot->organic_value_cents)
+                                                <span>&euro;{{ number_format($entityUrl->latestSnapshot->organic_value_cents / 100, 0) }}</span>
                                             @endif
                                             @if($entityUrl->latestSnapshot->domain_authority)
-                                                <span title="Domain Authority">DA {{ $entityUrl->latestSnapshot->domain_authority }}</span>
-                                            @endif
-                                            @if($entityUrl->latestSnapshot->backlinks_count)
-                                                <span title="Backlinks">{{ number_format($entityUrl->latestSnapshot->backlinks_count) }} BL</span>
+                                                <span>DA {{ $entityUrl->latestSnapshot->domain_authority }}</span>
                                             @endif
                                         </div>
                                     @elseif($entityUrl->last_checked_at)
-                                        <div class="text-[11px] text-gray-300 mt-1">Entdeckt {{ $entityUrl->last_checked_at->format('d.m.Y') }} &middot; Kein Snapshot</div>
+                                        <div class="text-[11px] text-gray-300 mt-1">Entdeckt {{ $entityUrl->last_checked_at->format('d.m.Y') }}</div>
                                     @endif
                                 </div>
                             </div>
@@ -160,11 +405,8 @@
                         </div>
                     </div>
                     @endif
-                </div>
 
-                {{-- Relationships Sidebar --}}
-                <div class="space-y-6">
-                    {{-- Outgoing --}}
+                    {{-- Outgoing Relationships --}}
                     @if($entity->outgoingRelationships->count())
                     <div class="bg-white rounded-lg border border-gray-200 p-4">
                         <h2 class="text-[13px] font-semibold text-gray-700 mb-3">Beziehungen (ausgehend)</h2>
@@ -179,7 +421,7 @@
                     </div>
                     @endif
 
-                    {{-- Incoming --}}
+                    {{-- Incoming Relationships --}}
                     @if($entity->incomingRelationships->count())
                     <div class="bg-white rounded-lg border border-gray-200 p-4">
                         <h2 class="text-[13px] font-semibold text-gray-700 mb-3">Beziehungen (eingehend)</h2>

@@ -85,6 +85,11 @@ class SyltjunkieServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Syltjunkie\Tools\CreateUrlSnapshotTool());
             $registry->register(new \Platform\Syltjunkie\Tools\DiscoverEntityUrlsTool());
             $registry->register(new \Platform\Syltjunkie\Tools\FetchUrlSnapshotsTool());
+
+            // Page Snapshots & Change Detection
+            $registry->register(new \Platform\Syltjunkie\Tools\FetchPageSnapshotsTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\ListPageSnapshotsTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\ListPageChangesTool());
         } catch (\Throwable $e) {}
     }
 

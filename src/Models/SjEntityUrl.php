@@ -62,4 +62,19 @@ class SjEntityUrl extends Model
     {
         return $this->hasMany(SjKeywordRanking::class, 'entity_url_id');
     }
+
+    public function pageSnapshots(): HasMany
+    {
+        return $this->hasMany(SjPageSnapshot::class, 'entity_url_id');
+    }
+
+    public function latestPageSnapshot(): HasOne
+    {
+        return $this->hasOne(SjPageSnapshot::class, 'entity_url_id')->latestOfMany('captured_at');
+    }
+
+    public function pageChanges(): HasMany
+    {
+        return $this->hasMany(SjPageChange::class, 'entity_url_id');
+    }
 }

@@ -6,8 +6,12 @@ use Platform\Core\Contracts\ToolContract;
 use Platform\Core\Contracts\ToolContext;
 use Platform\Core\Contracts\ToolMetadataContract;
 use Platform\Core\Contracts\ToolResult;
+use Platform\Integrations\DTOs\DataForSeo\RankedKeywordResult;
 use Platform\Integrations\Services\DataForSeoApiService;
 use Platform\Syltjunkie\Models\SjEntityUrl;
+use Platform\Syltjunkie\Models\SjKeyword;
+use Platform\Syltjunkie\Models\SjKeywordEntityRelevance;
+use Platform\Syltjunkie\Models\SjKeywordRanking;
 use Platform\Syltjunkie\Models\SjUrlSnapshot;
 use Platform\Syltjunkie\Tools\Concerns\ResolvesSyltjunkieTeam;
 
@@ -23,8 +27,9 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
     public function getDescription(): string
     {
         return 'POST /syltjunkie/url_snapshots/fetch - Ruft Keyword-Rankings für Entity-URLs via DataForSEO ab. '
-            . 'Pro Domain nur 1 API-Call (~$0.10), Keywords werden anhand der rankenden URL der konkreten Entity-URL zugeordnet. '
-            . 'GOSCH Alte Bootshalle bekommt nur Keywords wo /standorte/alte-bootshalle/ rankt — nicht die ganze Domain.';
+            . 'Pro Domain nur 1 API-Call (~$0.10). Keywords werden normalisiert in sj_keywords gespeichert, '
+            . 'Rankings in sj_keyword_rankings, Attribution in sj_keyword_entity_relevance. '
+            . 'URL-Snapshots werden als Tages-Aggregate berechnet.';
     }
 
     public function getSchema(): array
@@ -52,12 +57,12 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
                 ],
                 'max_urls' => [
                     'type' => 'integer',
-                    'description' => 'Optional: Maximale Anzahl URLs pro Aufruf. Default: 10. Max: 50.',
+                    'description' => 'Optional: Maximale Anzahl URLs. Default: 10. Max: 50.',
                     'default' => 10,
                 ],
                 'keywords_limit' => [
                     'type' => 'integer',
-                    'description' => 'Optional: Max Keywords pro Domain (höher = mehr Treffer pro Unterseite). Default: 100. Max: 500.',
+                    'description' => 'Optional: Max Keywords pro Domain. Default: 100. Max: 500.',
                     'default' => 100,
                 ],
                 'dry_run' => [
@@ -91,7 +96,7 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
             $q = SjEntityUrl::query()
                 ->where('team_id', $rootTeamId)
                 ->where('is_active', true)
-                ->with('entity:id,name,slug');
+                ->with('entity:id,name,slug,ort,entity_type_id');
 
             if (!empty($arguments['entity_url_id'])) {
                 $q->where('id', (int) $arguments['entity_url_id']);
@@ -109,11 +114,10 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
                 return ToolResult::success([
                     'message' => 'Keine URLs zum Verarbeiten gefunden.',
                     'processed' => 0,
-                    'snapshots_created' => 0,
                 ]);
             }
 
-            // Nach Domain gruppieren — 1 API-Call pro Domain
+            // Nach Domain gruppieren
             $byDomain = [];
             foreach ($urls as $entityUrl) {
                 $domain = $this->extractDomain($entityUrl->url);
@@ -134,7 +138,6 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
                             'path' => parse_url($u->url, PHP_URL_PATH) ?: '/',
                             'entity_name' => $u->entity?->name,
                         ], $domainUrls),
-                        'entity_url_count' => count($domainUrls),
                     ];
                 }
 
@@ -144,13 +147,14 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
                     'total_urls' => $urls->count(),
                     'domains' => $domainSummary,
                     'estimated_cost_cents' => count($byDomain) * 10,
-                    'strategy' => 'Keywords werden pro Domain gefetcht, dann anhand der rankenden URL der spezifischen Entity-URL zugeordnet.',
                 ]);
             }
 
             $api = app(DataForSeoApiService::class);
             $results = [];
-            $snapshotsCreated = 0;
+            $totalKeywordsUpserted = 0;
+            $totalRankingsCreated = 0;
+            $totalRelevanceCreated = 0;
             $apiCallsMade = 0;
             $today = now()->toDateString();
 
@@ -166,89 +170,37 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
                     );
                     $apiCallsMade++;
 
-                    // Keywords der spezifischen Entity-URLs zuordnen
-                    $urlAssignments = $this->assignKeywordsToUrls($rankedResults, $domainUrls);
+                    // Phase 1: Keywords normalisiert upserten
+                    $keywordModels = $this->upsertKeywords($rootTeamId, $rankedResults);
+                    $totalKeywordsUpserted += count($keywordModels);
 
-                    // Snapshot pro Entity-URL erstellen
+                    // Phase 2: Rankings + Attribution pro Entity-URL zuordnen
+                    $urlAssignments = $this->assignAndStoreRankings(
+                        $rootTeamId, $today, $domain, $rankedResults, $keywordModels, $domainUrls
+                    );
+
+                    // Phase 3: Snapshots als Tages-Aggregate berechnen
                     foreach ($domainUrls as $entityUrl) {
-                        $urlId = $entityUrl->id;
-                        $assignment = $urlAssignments[$urlId];
+                        $assignment = $urlAssignments[$entityUrl->id];
 
-                        $urlResult = [
-                            'entity_url_id' => $urlId,
-                            'url' => $entityUrl->url,
-                            'domain' => $domain,
-                            'entity_name' => $entityUrl->entity?->name,
-                        ];
-
-                        // Bereits vollständiger Snapshot für heute?
-                        $existing = SjUrlSnapshot::where('entity_url_id', $urlId)
-                            ->where('captured_at', $today)
-                            ->whereNotNull('organic_traffic_estimate')
-                            ->first();
-
-                        if ($existing) {
-                            $urlResult['skipped'] = 'Snapshot für heute existiert bereits.';
-                            $urlResult['snapshot_id'] = $existing->id;
-                            $results[] = $urlResult;
-                            continue;
-                        }
-
-                        // Bestehenden Discovery-Snapshot anreichern oder neuen erstellen
-                        $snapshot = SjUrlSnapshot::where('entity_url_id', $urlId)
-                            ->where('captured_at', $today)
-                            ->first();
-
-                        $snapshotKeywords = $assignment['keywords'];
-                        $traffic = $assignment['traffic'];
-
-                        if ($snapshot) {
-                            $existingKeywords = $snapshot->keywords ?? [];
-                            $mergedKeywords = $this->mergeKeywords($existingKeywords, $snapshotKeywords);
-
-                            $snapshot->update([
-                                'keywords' => $mergedKeywords,
-                                'organic_traffic_estimate' => $traffic ?: null,
-                                'raw_response' => array_merge($snapshot->raw_response ?? [], [
-                                    'scope' => 'url',
-                                    'domain' => $domain,
-                                    'matched_path' => $assignment['matched_path'],
-                                    'domain_total_keywords' => count($rankedResults),
-                                    'url_matched_keywords' => count($snapshotKeywords),
-                                    'unmatched_keywords_count' => $assignment['unmatched_count'],
-                                ]),
-                            ]);
-                        } else {
-                            $snapshot = SjUrlSnapshot::create([
-                                'team_id' => $rootTeamId,
-                                'entity_url_id' => $urlId,
-                                'captured_at' => $today,
-                                'keywords' => $snapshotKeywords,
-                                'organic_traffic_estimate' => $traffic ?: null,
-                                'raw_response' => [
-                                    'source' => 'ranked_keywords',
-                                    'scope' => 'url',
-                                    'domain' => $domain,
-                                    'matched_path' => $assignment['matched_path'],
-                                    'domain_total_keywords' => count($rankedResults),
-                                    'url_matched_keywords' => count($snapshotKeywords),
-                                    'unmatched_keywords_count' => $assignment['unmatched_count'],
-                                ],
-                            ]);
-                        }
+                        $this->upsertSnapshot($rootTeamId, $entityUrl, $today, $assignment, $domain, count($rankedResults));
 
                         $entityUrl->update(['last_checked_at' => now()]);
 
-                        $urlResult['snapshot_id'] = $snapshot->id;
-                        $urlResult['keywords_count'] = count($snapshotKeywords);
-                        $urlResult['organic_traffic_estimate'] = $traffic;
-                        $urlResult['domain_total_keywords'] = count($rankedResults);
-                        $urlResult['url_match_rate'] = count($rankedResults) > 0
-                            ? round(count($snapshotKeywords) / count($rankedResults) * 100, 1) . '%'
-                            : '0%';
-                        $snapshotsCreated++;
+                        $totalRankingsCreated += $assignment['rankings_created'];
+                        $totalRelevanceCreated += $assignment['relevance_created'];
 
-                        $results[] = $urlResult;
+                        $results[] = [
+                            'entity_url_id' => $entityUrl->id,
+                            'url' => $entityUrl->url,
+                            'domain' => $domain,
+                            'entity_name' => $entityUrl->entity?->name,
+                            'keywords_matched' => $assignment['keywords_count'],
+                            'keywords_brand' => $assignment['brand_keywords_count'],
+                            'organic_traffic' => $assignment['traffic'],
+                            'organic_value_cents' => $assignment['value_cents'],
+                            'domain_total_keywords' => count($rankedResults),
+                        ];
                     }
                 } catch (\Throwable $e) {
                     foreach ($domainUrls as $entityUrl) {
@@ -265,9 +217,11 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
 
             return ToolResult::success([
                 'processed' => count($results),
-                'snapshots_created' => $snapshotsCreated,
                 'api_calls_made' => $apiCallsMade,
                 'unique_domains' => count($byDomain),
+                'keywords_upserted' => $totalKeywordsUpserted,
+                'rankings_created' => $totalRankingsCreated,
+                'relevance_created' => $totalRelevanceCreated,
                 'estimated_cost_cents' => $apiCallsMade * 10,
                 'urls' => $results,
             ]);
@@ -276,100 +230,317 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
         }
     }
 
+    // =========================================================================
+    // Phase 1: Keywords normalisiert upserten
+    // =========================================================================
+
     /**
-     * Ordnet Keywords den konkreten Entity-URLs zu basierend auf der rankenden URL.
+     * Upserted Keywords in sj_keywords (team-weit dedupliziert).
      *
-     * Jedes RankedKeywordResult hat ein `url`-Feld das angibt, welche Seite
-     * der Domain für dieses Keyword rankt. Wir matchen per URL-Pfad-Prefix:
-     * - Entity-URL: gosch.de/standorte/alte-bootshalle/
-     * - Keyword rankt auf: gosch.de/standorte/alte-bootshalle/ → Match ✓
-     * - Keyword rankt auf: gosch.de/standorte/list/ → kein Match ✗
-     *
-     * Keywords die keiner Entity-URL zugeordnet werden können (z.B. Homepage-Keywords)
-     * werden nicht doppelt gezählt.
-     *
-     * @param \Platform\Integrations\DTOs\DataForSeo\RankedKeywordResult[] $rankedResults
-     * @param SjEntityUrl[] $entityUrls
-     * @return array<int, array{keywords: array, traffic: int, matched_path: string, unmatched_count: int}>
+     * @param RankedKeywordResult[] $rankedResults
+     * @return array<string, SjKeyword> keyword_lower => Model
      */
-    protected function assignKeywordsToUrls(array $rankedResults, array $entityUrls): array
+    protected function upsertKeywords(int $teamId, array $rankedResults): array
     {
-        // Entity-URL Pfade vorbereiten (normalisiert, ohne trailing slash für Prefix-Match)
-        $urlPaths = [];
-        foreach ($entityUrls as $entityUrl) {
-            $path = parse_url($entityUrl->url, PHP_URL_PATH) ?: '/';
-            $urlPaths[$entityUrl->id] = [
-                'path' => rtrim(strtolower($path), '/'),
-                'entity_url' => $entityUrl,
-            ];
-        }
-
-        // Ergebnis-Container pro Entity-URL
-        $assignments = [];
-        foreach ($entityUrls as $entityUrl) {
-            $assignments[$entityUrl->id] = [
-                'keywords' => [],
-                'traffic' => 0,
-                'matched_path' => $urlPaths[$entityUrl->id]['path'],
-                'unmatched_count' => 0,
-            ];
-        }
-
-        $totalUnmatched = 0;
+        $models = [];
 
         foreach ($rankedResults as $rk) {
+            $keywordLower = strtolower(trim($rk->keyword));
+            if (empty($keywordLower) || isset($models[$keywordLower])) {
+                continue;
+            }
+
+            $model = SjKeyword::updateOrCreate(
+                ['team_id' => $teamId, 'keyword' => $keywordLower],
+                array_filter([
+                    'search_volume' => $rk->searchVolume,
+                    'cpc_cents' => $rk->cpc !== null ? (int) round($rk->cpc * 100) : null,
+                    'competition' => $rk->competition,
+                    'keyword_difficulty' => $rk->keywordDifficulty,
+                    'last_fetched_at' => now(),
+                ], fn($v) => $v !== null)
+            );
+
+            $models[$keywordLower] = $model;
+        }
+
+        return $models;
+    }
+
+    // =========================================================================
+    // Phase 2: Rankings zuordnen + Entity-Relevance berechnen
+    // =========================================================================
+
+    /**
+     * Ordnet Keywords per URL-Pfad-Match zu, speichert Rankings + Relevance.
+     *
+     * @param RankedKeywordResult[] $rankedResults
+     * @param array<string, SjKeyword> $keywordModels
+     * @param SjEntityUrl[] $entityUrls
+     * @return array<int, array> entityUrlId => assignment data
+     */
+    protected function assignAndStoreRankings(
+        int $teamId,
+        string $today,
+        string $domain,
+        array $rankedResults,
+        array $keywordModels,
+        array $entityUrls,
+    ): array {
+        // Entity-URL Pfade vorbereiten
+        $urlPaths = [];
+        foreach ($entityUrls as $eu) {
+            $path = parse_url($eu->url, PHP_URL_PATH) ?: '/';
+            $urlPaths[$eu->id] = rtrim(strtolower($path), '/');
+        }
+
+        // Ergebnis-Container
+        $assignments = [];
+        foreach ($entityUrls as $eu) {
+            $assignments[$eu->id] = [
+                'keywords_count' => 0,
+                'brand_keywords_count' => 0,
+                'traffic' => 0,
+                'value_cents' => 0,
+                'rankings_created' => 0,
+                'relevance_created' => 0,
+            ];
+        }
+
+        foreach ($rankedResults as $rk) {
+            $keywordLower = strtolower(trim($rk->keyword));
+            $keywordModel = $keywordModels[$keywordLower] ?? null;
+            if (!$keywordModel) {
+                continue;
+            }
+
             $rankedUrl = $rk->url ?? '';
             $rankedPath = rtrim(strtolower(parse_url($rankedUrl, PHP_URL_PATH) ?: '/'), '/');
 
-            // Finde die passende Entity-URL (längster Pfad-Match gewinnt)
-            $bestMatch = null;
-            $bestMatchLength = -1;
+            // URL-Pfad-Match: welche Entity-URL passt?
+            $directMatch = $this->findBestPathMatch($rankedPath, $urlPaths);
 
-            foreach ($urlPaths as $entityUrlId => $info) {
-                $entityPath = $info['path'];
+            // Brand-Match: enthält das Keyword den Entity-Namen?
+            $brandMatches = $this->findBrandMatches($keywordLower, $entityUrls);
 
-                // Exakter Match oder Prefix-Match (Entity-URL ist Prefix der rankenden URL)
-                if ($rankedPath === $entityPath || str_starts_with($rankedPath, $entityPath . '/')) {
-                    $pathLength = strlen($entityPath);
-                    if ($pathLength > $bestMatchLength) {
-                        $bestMatch = $entityUrlId;
-                        $bestMatchLength = $pathLength;
+            $ctr = ($rk->position) ? $this->estimateCtr($rk->position) : 0;
+            $trafficEstimate = ($rk->searchVolume && $rk->position)
+                ? (int) round($rk->searchVolume * $ctr)
+                : 0;
+            $valueCents = ($rk->searchVolume && $rk->position && $rk->cpc)
+                ? (int) round($rk->searchVolume * $ctr * $rk->cpc * 100)
+                : 0;
+
+            // Direct Ranking: URL-Match → Keyword-Ranking + direct Relevance
+            if ($directMatch !== null) {
+                $this->upsertRanking($keywordModel->id, $directMatch, $rk, $today);
+                $assignments[$directMatch]['rankings_created']++;
+                $assignments[$directMatch]['keywords_count']++;
+                $assignments[$directMatch]['traffic'] += $trafficEstimate;
+                $assignments[$directMatch]['value_cents'] += $valueCents;
+
+                // Direct relevance für die Entity hinter dieser URL
+                $entityId = null;
+                foreach ($entityUrls as $eu) {
+                    if ($eu->id === $directMatch) {
+                        $entityId = $eu->entity_id;
+                        break;
+                    }
+                }
+                if ($entityId) {
+                    $created = $this->upsertRelevance($keywordModel->id, $entityId, 'direct', 1.0, 'auto_ranking');
+                    if ($created) {
+                        $assignments[$directMatch]['relevance_created']++;
                     }
                 }
             }
 
-            $keyword = [
-                'keyword' => $rk->keyword,
-                'position' => $rk->position,
-                'search_volume' => $rk->searchVolume,
-                'cpc' => $rk->cpc,
-                'competition' => $rk->competition,
-                'ranked_url' => $rankedUrl,
-            ];
+            // Brand Relevance: Keyword enthält Entity-Name
+            foreach ($brandMatches as $match) {
+                $entityUrlId = $match['entity_url_id'];
+                $entityId = $match['entity_id'];
 
-            if ($bestMatch !== null) {
-                $assignments[$bestMatch]['keywords'][] = $keyword;
-
-                if ($rk->searchVolume && $rk->position) {
-                    $ctr = $this->estimateCtr($rk->position);
-                    $assignments[$bestMatch]['traffic'] += (int) round($rk->searchVolume * $ctr);
+                // Nicht doppelt als brand + direct zählen
+                if ($entityUrlId === $directMatch) {
+                    continue;
                 }
-            } else {
-                $totalUnmatched++;
-            }
-        }
 
-        // Unmatched-Count auf alle verteilen (für Transparenz)
-        foreach ($assignments as &$a) {
-            $a['unmatched_count'] = $totalUnmatched;
+                $created = $this->upsertRelevance($keywordModel->id, $entityId, 'brand', $match['confidence'], 'auto_brand');
+                if ($created) {
+                    $assignments[$entityUrlId]['relevance_created']++;
+                }
+                $assignments[$entityUrlId]['brand_keywords_count']++;
+            }
         }
 
         return $assignments;
     }
 
     /**
-     * Extrahiert und normalisiert die Domain aus einer URL.
+     * Findet die Entity-URL mit dem längsten Pfad-Match.
      */
+    protected function findBestPathMatch(string $rankedPath, array $urlPaths): ?int
+    {
+        $bestMatch = null;
+        $bestLength = -1;
+
+        foreach ($urlPaths as $entityUrlId => $entityPath) {
+            if ($rankedPath === $entityPath || str_starts_with($rankedPath, $entityPath . '/')) {
+                if (strlen($entityPath) > $bestLength) {
+                    $bestMatch = $entityUrlId;
+                    $bestLength = strlen($entityPath);
+                }
+            }
+        }
+
+        return $bestMatch;
+    }
+
+    /**
+     * Findet Entities deren Name im Keyword vorkommt (Brand-Match).
+     *
+     * @return array<array{entity_url_id: int, entity_id: int, confidence: float}>
+     */
+    protected function findBrandMatches(string $keywordLower, array $entityUrls): array
+    {
+        $matches = [];
+
+        foreach ($entityUrls as $eu) {
+            $entity = $eu->entity;
+            if (!$entity) {
+                continue;
+            }
+
+            $nameLower = strtolower($entity->name);
+            $nameWords = array_filter(explode(' ', $nameLower), fn($w) => mb_strlen($w) > 2);
+
+            // Mindestens 2 signifikante Wörter des Entity-Namens müssen im Keyword vorkommen
+            $matchedWords = 0;
+            foreach ($nameWords as $word) {
+                if (str_contains($keywordLower, $word)) {
+                    $matchedWords++;
+                }
+            }
+
+            if (count($nameWords) > 0 && $matchedWords >= min(2, count($nameWords))) {
+                $confidence = round($matchedWords / max(count($nameWords), 1), 2);
+                $matches[] = [
+                    'entity_url_id' => $eu->id,
+                    'entity_id' => $entity->id,
+                    'confidence' => min($confidence, 0.95),
+                ];
+            }
+        }
+
+        return $matches;
+    }
+
+    /**
+     * Upserted ein Keyword-Ranking für heute.
+     */
+    protected function upsertRanking(int $keywordId, int $entityUrlId, RankedKeywordResult $rk, string $today): void
+    {
+        $existing = SjKeywordRanking::where('keyword_id', $keywordId)
+            ->where('entity_url_id', $entityUrlId)
+            ->where('captured_at', $today)
+            ->first();
+
+        if ($existing) {
+            $existing->update([
+                'position' => $rk->position,
+                'ranked_url' => $rk->url ?? '',
+                'serp_features' => $rk->serpFeatures,
+            ]);
+            return;
+        }
+
+        // Vorherige Position ermitteln (letztes Ranking vor heute)
+        $previous = SjKeywordRanking::where('keyword_id', $keywordId)
+            ->where('entity_url_id', $entityUrlId)
+            ->where('captured_at', '<', $today)
+            ->orderByDesc('captured_at')
+            ->value('position');
+
+        SjKeywordRanking::create([
+            'keyword_id' => $keywordId,
+            'entity_url_id' => $entityUrlId,
+            'position' => $rk->position,
+            'previous_position' => $previous,
+            'ranked_url' => $rk->url ?? '',
+            'captured_at' => $today,
+            'serp_features' => $rk->serpFeatures,
+        ]);
+    }
+
+    /**
+     * Upserted eine Keyword-Entity-Relevance. Returns true wenn neu erstellt.
+     */
+    protected function upsertRelevance(int $keywordId, int $entityId, string $type, float $confidence, string $source): bool
+    {
+        $existing = SjKeywordEntityRelevance::where('keyword_id', $keywordId)
+            ->where('entity_id', $entityId)
+            ->first();
+
+        if ($existing) {
+            // Nur upgraden: direct > brand > local > generic
+            $priority = ['direct' => 4, 'brand' => 3, 'local' => 2, 'generic' => 1];
+            if (($priority[$type] ?? 0) > ($priority[$existing->attribution_type] ?? 0)) {
+                $existing->update([
+                    'attribution_type' => $type,
+                    'confidence' => $confidence,
+                    'source' => $source,
+                ]);
+            }
+            return false;
+        }
+
+        SjKeywordEntityRelevance::create([
+            'keyword_id' => $keywordId,
+            'entity_id' => $entityId,
+            'attribution_type' => $type,
+            'confidence' => $confidence,
+            'source' => $source,
+        ]);
+
+        return true;
+    }
+
+    // =========================================================================
+    // Phase 3: Snapshot als Tages-Aggregat
+    // =========================================================================
+
+    protected function upsertSnapshot(
+        int $teamId,
+        SjEntityUrl $entityUrl,
+        string $today,
+        array $assignment,
+        string $domain,
+        int $domainTotalKeywords,
+    ): void {
+        SjUrlSnapshot::updateOrCreate(
+            ['entity_url_id' => $entityUrl->id, 'captured_at' => $today],
+            [
+                'team_id' => $teamId,
+                'keywords_count' => $assignment['keywords_count'],
+                'organic_traffic_estimate' => $assignment['traffic'] ?: null,
+                'organic_value_cents' => $assignment['value_cents'] ?: null,
+                'keywords' => null, // Deprecated: Keywords sind jetzt in sj_keywords + sj_keyword_rankings
+                'raw_response' => [
+                    'source' => 'ranked_keywords',
+                    'scope' => 'url',
+                    'domain' => $domain,
+                    'domain_total_keywords' => $domainTotalKeywords,
+                    'url_matched_keywords' => $assignment['keywords_count'],
+                    'brand_keywords' => $assignment['brand_keywords_count'],
+                ],
+            ]
+        );
+    }
+
+    // =========================================================================
+    // Helpers
+    // =========================================================================
+
     protected function extractDomain(string $url): ?string
     {
         $host = parse_url($url, PHP_URL_HOST);
@@ -379,9 +550,6 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
         return preg_replace('/^www\./', '', strtolower($host));
     }
 
-    /**
-     * Schätzt die Click-Through-Rate basierend auf der SERP-Position.
-     */
     protected function estimateCtr(int $position): float
     {
         return match (true) {
@@ -393,27 +561,6 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
             $position <= 20 => 0.01,
             default => 0.005,
         };
-    }
-
-    /**
-     * Merged SERP-Discovery-Keywords mit Ranked-Keywords.
-     */
-    protected function mergeKeywords(array $existing, array $ranked): array
-    {
-        $byKeyword = [];
-
-        foreach ($ranked as $kw) {
-            $byKeyword[strtolower($kw['keyword'])] = $kw;
-        }
-
-        foreach ($existing as $kw) {
-            $key = strtolower($kw['keyword']);
-            if (!isset($byKeyword[$key])) {
-                $byKeyword[$key] = $kw;
-            }
-        }
-
-        return array_values($byKeyword);
     }
 
     public function getMetadata(): array

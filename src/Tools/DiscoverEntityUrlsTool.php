@@ -9,6 +9,9 @@ use Platform\Core\Contracts\ToolResult;
 use Platform\Integrations\Services\DataForSeoApiService;
 use Platform\Syltjunkie\Models\SjEntity;
 use Platform\Syltjunkie\Models\SjEntityUrl;
+use Platform\Syltjunkie\Models\SjKeyword;
+use Platform\Syltjunkie\Models\SjKeywordEntityRelevance;
+use Platform\Syltjunkie\Models\SjKeywordRanking;
 use Platform\Syltjunkie\Models\SjUrlSnapshot;
 use Platform\Syltjunkie\Tools\Concerns\ResolvesSyltjunkieTeam;
 
@@ -16,10 +19,6 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
 {
     use ResolvesSyltjunkieTeam;
 
-    /**
-     * Domain-Patterns → Platform Mapping.
-     * Reihenfolge: spezifischere Patterns zuerst.
-     */
     protected const PLATFORM_MAP = [
         'google.com/maps'      => 'google_maps',
         'google.de/maps'       => 'google_maps',
@@ -38,7 +37,9 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
 
     public function getDescription(): string
     {
-        return 'POST /syltjunkie/entity_urls/discover - Entdeckt URLs für eine Entity via Google SERP (DataForSEO). Sucht nach "{name} {ort} Sylt" und legt automatisch Entity-URLs an. Kostet ~$0.10 pro Entity (1 SERP-Call). Optional: alle Entities ohne URLs verarbeiten.';
+        return 'POST /syltjunkie/entity_urls/discover - Entdeckt URLs für eine Entity via Google SERP (DataForSEO). '
+            . 'Sucht nach "{name} {ort} Sylt", legt Entity-URLs an und speichert SERP-Keywords normalisiert in sj_keywords + sj_keyword_rankings. '
+            . 'Kostet ~$0.10 pro Entity (1 SERP-Call).';
     }
 
     public function getSchema(): array
@@ -56,12 +57,12 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
                 ],
                 'max_entities' => [
                     'type' => 'integer',
-                    'description' => 'Optional: Maximale Anzahl Entities pro Aufruf (Schutz vor hohen Kosten). Default: 10. Max: 50.',
+                    'description' => 'Optional: Maximale Anzahl Entities pro Aufruf. Default: 10. Max: 50.',
                     'default' => 10,
                 ],
                 'dry_run' => [
                     'type' => 'boolean',
-                    'description' => 'Optional: Nur anzeigen was passieren würde, ohne URLs anzulegen. Default: false.',
+                    'description' => 'Optional: Nur anzeigen was passieren würde. Default: false.',
                     'default' => false,
                 ],
             ],
@@ -84,14 +85,12 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
             $maxEntities = min((int) ($arguments['max_entities'] ?? 10), 50);
             $dryRun = (bool) ($arguments['dry_run'] ?? false);
 
-            // Entities ermitteln
             if (!empty($arguments['entity_id'])) {
                 $entities = SjEntity::where('team_id', $rootTeamId)
                     ->where('is_active', true)
                     ->where('id', (int) $arguments['entity_id'])
                     ->get();
             } else {
-                // Alle aktiven Entities ohne URLs
                 $entities = SjEntity::where('team_id', $rootTeamId)
                     ->where('is_active', true)
                     ->whereDoesntHave('entityUrls', fn($q) => $q->where('is_active', true))
@@ -124,7 +123,6 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
                 try {
                     $serpResults = $api->getSerpOrganic($context->user, $searchQuery);
                     $discoveredUrls = $this->extractUrls($serpResults, $entity);
-
                     $entityResult['urls_found'] = $discoveredUrls;
 
                     if (!$dryRun) {
@@ -143,7 +141,7 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
                 'processed' => count($results),
                 'urls_created' => $totalUrlsCreated,
                 'dry_run' => $dryRun,
-                'estimated_cost_cents' => count($results) * 10, // ~$0.10 pro SERP-Call
+                'estimated_cost_cents' => count($results) * 10,
                 'entities' => $results,
             ]);
         } catch (\Throwable $e) {
@@ -151,33 +149,23 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
         }
     }
 
-    /**
-     * Baut die Google-Suchanfrage für eine Entity.
-     */
     protected function buildSearchQuery(SjEntity $entity): string
     {
         $parts = [$entity->name];
-
         if ($entity->ort) {
             $parts[] = $entity->ort;
         }
-
         $parts[] = 'Sylt';
-
         return implode(' ', $parts);
     }
 
     /**
-     * Extrahiert und dedupliziert URLs aus SERP-Ergebnissen.
-     * Mappt Domains auf Plattformen und wählt pro Plattform die bestplatzierte URL.
-     *
      * @param \Platform\Integrations\DTOs\DataForSeo\SerpOrganicResult[] $serpResults
-     * @return array<array{url: string, platform: string, position: int, title: ?string, domain: ?string}>
      */
     protected function extractUrls(array $serpResults, SjEntity $entity): array
     {
-        $found = [];        // platform => best result
-        $websiteUrls = [];  // Alle website-URLs (nicht social/platform)
+        $found = [];
+        $websiteUrls = [];
 
         foreach ($serpResults as $result) {
             if (!$result->url) {
@@ -187,7 +175,6 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
             $platform = $this->detectPlatform($result->url, $result->domain);
             $position = $result->position ?? 999;
 
-            // Pro Plattform nur die bestplatzierte URL behalten
             if ($platform !== 'website') {
                 if (!isset($found[$platform]) || $position < $found[$platform]['position']) {
                     $found[$platform] = [
@@ -209,19 +196,14 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
             }
         }
 
-        // Beste Website-URL (höchste Position = niedrigste Zahl) als primary
         if (!empty($websiteUrls)) {
             usort($websiteUrls, fn($a, $b) => $a['position'] <=> $b['position']);
-            // Nur die Top-Website-URL nehmen (die eigene Website der Entity)
             $found['website'] = $websiteUrls[0];
         }
 
         return array_values($found);
     }
 
-    /**
-     * Erkennt die Plattform anhand der URL/Domain.
-     */
     protected function detectPlatform(?string $url, ?string $domain): string
     {
         $urlLower = strtolower($url ?? '');
@@ -237,9 +219,6 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
     }
 
     /**
-     * Erstellt Entity-URLs aus den entdeckten Ergebnissen und speichert SERP-Snapshot.
-     * Überspringt bereits vorhandene URLs (Duplikat-Schutz via unique constraint).
-     *
      * @param \Platform\Integrations\DTOs\DataForSeo\SerpOrganicResult[] $serpResults
      */
     protected function createEntityUrls(int $teamId, SjEntity $entity, array $discoveredUrls, string $searchQuery, array $serpResults): int
@@ -251,23 +230,32 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
             ->where('is_active', true)
             ->exists();
 
-        // SERP-Ergebnisse als raw_response aufbereiten
         $rawSerpData = array_map(fn($r) => $r->toArray(), $serpResults);
+        $today = now()->toDateString();
+
+        // Search-Query als Keyword normalisiert speichern
+        $searchKeyword = SjKeyword::firstOrCreate(
+            ['team_id' => $teamId, 'keyword' => strtolower(trim($searchQuery))],
+            ['last_fetched_at' => now()]
+        );
+
+        // Direct relevance: Entity wird direkt durch SERP-Suche verknüpft
+        SjKeywordEntityRelevance::firstOrCreate(
+            ['keyword_id' => $searchKeyword->id, 'entity_id' => $entity->id],
+            ['attribution_type' => 'direct', 'confidence' => 1.0, 'source' => 'auto_serp']
+        );
 
         foreach ($discoveredUrls as $urlData) {
-            // Prüfen ob URL bereits existiert
             $existing = SjEntityUrl::where('team_id', $teamId)
                 ->where('entity_id', $entity->id)
                 ->where('url', $urlData['url'])
                 ->first();
 
             if ($existing) {
-                // Snapshot für bestehende URL erstellen (falls noch keiner für heute)
-                $this->createSerpSnapshot($teamId, $existing, $searchQuery, $urlData, $rawSerpData);
+                $this->storeDiscoveryData($teamId, $existing, $searchKeyword, $urlData, $today, $rawSerpData);
                 continue;
             }
 
-            // Erste Website-URL wird primary, wenn noch keine existiert
             $isPrimary = false;
             if (!$hasPrimary && $urlData['platform'] === 'website') {
                 $isPrimary = true;
@@ -284,9 +272,7 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
                 'last_checked_at' => now(),
             ]);
 
-            // SERP-Snapshot für neue URL erstellen
-            $this->createSerpSnapshot($teamId, $entityUrl, $searchQuery, $urlData, $rawSerpData);
-
+            $this->storeDiscoveryData($teamId, $entityUrl, $searchKeyword, $urlData, $today, $rawSerpData);
             $created++;
         }
 
@@ -294,40 +280,44 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
     }
 
     /**
-     * Erstellt einen Snapshot aus den SERP-Discovery-Daten.
+     * Speichert SERP-Discovery-Daten normalisiert: Ranking + Snapshot.
      */
-    protected function createSerpSnapshot(int $teamId, SjEntityUrl $entityUrl, string $searchQuery, array $urlData, array $rawSerpData): void
-    {
-        $today = now()->toDateString();
-
-        // Nur ein Snapshot pro URL pro Tag
-        $exists = SjUrlSnapshot::where('entity_url_id', $entityUrl->id)
-            ->where('captured_at', $today)
-            ->exists();
-
-        if ($exists) {
-            return;
+    protected function storeDiscoveryData(
+        int $teamId,
+        SjEntityUrl $entityUrl,
+        SjKeyword $searchKeyword,
+        array $urlData,
+        string $today,
+        array $rawSerpData,
+    ): void {
+        // Keyword-Ranking für die SERP-Position
+        if (isset($urlData['position']) && $urlData['position'] < 999) {
+            SjKeywordRanking::firstOrCreate(
+                [
+                    'keyword_id' => $searchKeyword->id,
+                    'entity_url_id' => $entityUrl->id,
+                    'captured_at' => $today,
+                ],
+                [
+                    'position' => $urlData['position'],
+                    'ranked_url' => $urlData['url'],
+                ]
+            );
         }
 
-        SjUrlSnapshot::create([
-            'team_id' => $teamId,
-            'entity_url_id' => $entityUrl->id,
-            'captured_at' => $today,
-            'keywords' => [
-                [
-                    'keyword' => $searchQuery,
-                    'position' => $urlData['position'] ?? null,
-                    'search_volume' => null,
-                    'cpc' => null,
-                    'competition' => null,
+        // URL-Snapshot als Tages-Aggregat
+        SjUrlSnapshot::firstOrCreate(
+            ['entity_url_id' => $entityUrl->id, 'captured_at' => $today],
+            [
+                'team_id' => $teamId,
+                'keywords_count' => 1,
+                'raw_response' => [
+                    'source' => 'serp_discovery',
+                    'search_query' => $searchKeyword->keyword,
+                    'serp_results' => $rawSerpData,
                 ],
-            ],
-            'raw_response' => [
-                'source' => 'serp_discovery',
-                'search_query' => $searchQuery,
-                'serp_results' => $rawSerpData,
-            ],
-        ]);
+            ]
+        );
     }
 
     public function getMetadata(): array

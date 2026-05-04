@@ -36,7 +36,7 @@ class EntityDetail extends Component
         $keywordRankings = collect();
         if ($entityUrlIds->isNotEmpty()) {
             $keywordRankings = SjKeywordRanking::whereIn('entity_url_id', $entityUrlIds)
-                ->with('keyword:id,keyword,search_volume,cpc_cents,keyword_difficulty')
+                ->with('keyword:id,keyword,search_volume,cpc_cents,keyword_difficulty,monthly_volumes,peak_month,seasonality_index')
                 ->orderBy('position')
                 ->whereIn('id', function ($q) use ($entityUrlIds) {
                     $q->selectRaw('MAX(id)')

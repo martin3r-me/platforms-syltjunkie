@@ -250,15 +250,43 @@ class FetchUrlSnapshotsTool implements ToolContract, ToolMetadataContract
                 continue;
             }
 
+            // Saisonalität berechnen aus monthly_searches
+            $monthlyVolumes = null;
+            $peakMonth = null;
+            $seasonalityIndex = null;
+
+            if ($rk->monthlySearches && count($rk->monthlySearches) >= 6) {
+                // Als {1: vol, 2: vol, ...12: vol} speichern (aktuellster Wert pro Monat)
+                $byMonth = [];
+                foreach ($rk->monthlySearches as $m) {
+                    $month = $m['month'] ?? 0;
+                    if ($month >= 1 && $month <= 12) {
+                        $byMonth[$month] = $m['search_volume'];
+                    }
+                }
+                if (count($byMonth) >= 6) {
+                    $monthlyVolumes = $byMonth;
+                    $peakMonth = array_search(max($byMonth), $byMonth);
+                    $avg = array_sum($byMonth) / count($byMonth);
+                    // Seasonality Index: max / avg (1.0 = flat, >2.0 = highly seasonal)
+                    $seasonalityIndex = $avg > 0 ? round(max($byMonth) / $avg, 2) : null;
+                }
+            }
+
+            $updateData = array_filter([
+                'search_volume' => $rk->searchVolume,
+                'cpc_cents' => $rk->cpc !== null ? (int) round($rk->cpc * 100) : null,
+                'competition' => $rk->competition,
+                'keyword_difficulty' => $rk->keywordDifficulty,
+                'monthly_volumes' => $monthlyVolumes,
+                'peak_month' => $peakMonth,
+                'seasonality_index' => $seasonalityIndex,
+                'last_fetched_at' => now(),
+            ], fn($v) => $v !== null);
+
             $model = SjKeyword::updateOrCreate(
                 ['team_id' => $teamId, 'keyword' => $keywordLower],
-                array_filter([
-                    'search_volume' => $rk->searchVolume,
-                    'cpc_cents' => $rk->cpc !== null ? (int) round($rk->cpc * 100) : null,
-                    'competition' => $rk->competition,
-                    'keyword_difficulty' => $rk->keywordDifficulty,
-                    'last_fetched_at' => now(),
-                ], fn($v) => $v !== null)
+                $updateData
             );
 
             $models[$keywordLower] = $model;

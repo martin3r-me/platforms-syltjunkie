@@ -171,6 +171,7 @@
                                         <th class="pb-2 pr-3">Pos.</th>
                                         <th class="pb-2 pr-3">Keyword</th>
                                         <th class="pb-2 pr-3 text-right">Vol.</th>
+                                        <th class="pb-2 pr-2 text-center">Saison</th>
                                         <th class="pb-2 pr-3 text-right">CPC</th>
                                         <th class="pb-2 text-right">KD</th>
                                     </tr>
@@ -195,6 +196,38 @@
                                                 {{ number_format($ranking->keyword->search_volume) }}
                                             @else
                                                 <span class="text-gray-300">&mdash;</span>
+                                            @endif
+                                        </td>
+                                        <td class="py-1.5 pr-2">
+                                            @if($ranking->keyword?->monthly_volumes && count($ranking->keyword->monthly_volumes) >= 6)
+                                                @php
+                                                    $mv = $ranking->keyword->monthly_volumes;
+                                                    $maxVol = max($mv);
+                                                    $monthNames = ['', 'J','F','M','A','M','J','J','A','S','O','N','D'];
+                                                    $currentMonth = (int) date('n');
+                                                @endphp
+                                                <div class="flex items-end gap-px h-4 justify-center" title="@foreach(range(1,12) as $m){{ $monthNames[$m] }}: {{ number_format($mv[$m] ?? 0) }}{{ $m < 12 ? ' | ' : '' }}@endforeach">
+                                                    @foreach(range(1, 12) as $m)
+                                                        @php
+                                                            $v = $mv[$m] ?? 0;
+                                                            $h = $maxVol > 0 ? max(1, round(($v / $maxVol) * 16)) : 1;
+                                                            $isCurrent = $m === $currentMonth;
+                                                            $isPeak = $m === ($ranking->keyword->peak_month ?? 0);
+                                                        @endphp
+                                                        <div class="w-1 rounded-t {{ $isPeak ? 'bg-blue-500' : ($isCurrent ? 'bg-blue-300' : 'bg-gray-200') }}"
+                                                             style="height: {{ $h }}px"></div>
+                                                    @endforeach
+                                                </div>
+                                                @if($ranking->keyword->peak_month)
+                                                    <div class="text-[9px] text-gray-400 text-center mt-0.5">
+                                                        Peak {{ $monthNames[$ranking->keyword->peak_month] ?? '' }}
+                                                        @if($ranking->keyword->seasonality_index && $ranking->keyword->seasonality_index >= 1.5)
+                                                            <span class="text-orange-500">{{ number_format($ranking->keyword->seasonality_index, 1) }}x</span>
+                                                        @endif
+                                                    </div>
+                                                @endif
+                                            @else
+                                                <span class="text-gray-300 text-center block">&mdash;</span>
                                             @endif
                                         </td>
                                         <td class="py-1.5 pr-3 text-right text-gray-500">

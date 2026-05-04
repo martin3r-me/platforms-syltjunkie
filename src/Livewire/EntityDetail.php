@@ -24,6 +24,8 @@ class EntityDetail extends Component
             'outgoingRelationships.relationType',
             'incomingRelationships.sourceEntity.entityType',
             'incomingRelationships.relationType',
+            'entityUrls' => fn($q) => $q->where('is_active', true)->orderByDesc('is_primary')->orderBy('platform'),
+            'entityUrls.snapshots' => fn($q) => $q->orderByDesc('captured_at')->limit(1),
         ]);
 
         return view('syltjunkie::livewire.entity-detail', [

@@ -98,10 +98,13 @@ class ListUrlSnapshotsTool implements ToolContract, ToolMetadataContract
                     'url' => $snap->entityUrl?->url,
                     'platform' => $snap->entityUrl?->platform,
                     'captured_at' => $snap->captured_at->toDateString(),
-                    'keywords_count' => is_array($snap->keywords) ? count($snap->keywords) : 0,
+                    'keywords_count' => $snap->keywords_count ?? (is_array($snap->keywords) ? count($snap->keywords) : 0),
                     'organic_traffic_estimate' => $snap->organic_traffic_estimate,
+                    'organic_value_cents' => $snap->organic_value_cents,
                     'domain_authority' => $snap->domain_authority,
                     'backlinks_count' => $snap->backlinks_count,
+                    'review_count' => $snap->review_count,
+                    'average_rating' => $snap->average_rating,
                     'created_at' => $snap->created_at?->toIso8601String(),
                 ];
                 if ($includeKeywords) {

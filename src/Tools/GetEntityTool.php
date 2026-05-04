@@ -119,7 +119,7 @@ class GetEntityTool implements ToolContract, ToolMetadataContract
             $includeUrls = $arguments['include_urls'] ?? false;
             if ($includeUrls) {
                 $entity->load(['entityUrls' => function ($q) {
-                    $q->where('is_active', true)->with(['snapshots' => fn($sub) => $sub->orderByDesc('captured_at')->limit(1)]);
+                    $q->where('is_active', true)->with('latestSnapshot');
                 }]);
 
                 $data['urls'] = $entity->entityUrls->map(function ($eu) {
@@ -130,14 +130,16 @@ class GetEntityTool implements ToolContract, ToolMetadataContract
                         'is_primary' => $eu->is_primary,
                         'last_checked_at' => $eu->last_checked_at?->toIso8601String(),
                     ];
-                    if ($eu->snapshots->isNotEmpty()) {
-                        $snap = $eu->snapshots->first();
+                    if ($snap = $eu->latestSnapshot) {
                         $item['latest_snapshot'] = [
                             'captured_at' => $snap->captured_at->toDateString(),
-                            'keywords_count' => is_array($snap->keywords) ? count($snap->keywords) : 0,
+                            'keywords_count' => $snap->keywords_count ?? 0,
                             'organic_traffic_estimate' => $snap->organic_traffic_estimate,
+                            'organic_value_cents' => $snap->organic_value_cents,
                             'domain_authority' => $snap->domain_authority,
                             'backlinks_count' => $snap->backlinks_count,
+                            'review_count' => $snap->review_count,
+                            'average_rating' => $snap->average_rating,
                         ];
                     }
                     return $item;

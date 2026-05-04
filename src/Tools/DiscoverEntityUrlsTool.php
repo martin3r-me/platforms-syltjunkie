@@ -306,7 +306,7 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
         }
 
         // URL-Snapshot als Tages-Aggregat
-        SjUrlSnapshot::firstOrCreate(
+        SjUrlSnapshot::updateOrCreate(
             ['entity_url_id' => $entityUrl->id, 'captured_at' => $today],
             [
                 'team_id' => $teamId,

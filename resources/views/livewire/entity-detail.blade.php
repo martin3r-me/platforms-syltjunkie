@@ -135,21 +135,20 @@
                                     </a>
 
                                     {{-- Latest Snapshot --}}
-                                    @if($entityUrl->snapshots->isNotEmpty())
-                                        @php $snap = $entityUrl->snapshots->first(); @endphp
+                                    @if($entityUrl->latestSnapshot)
                                         <div class="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
-                                            <span title="Snapshot vom">{{ $snap->captured_at->format('d.m.Y') }}</span>
-                                            @if($snap->keywords && count($snap->keywords))
-                                                <span title="Keywords">{{ count($snap->keywords) }} Keywords</span>
+                                            <span title="Snapshot vom">{{ $entityUrl->latestSnapshot->captured_at->format('d.m.Y') }}</span>
+                                            @if($entityUrl->latestSnapshot->keywords && count($entityUrl->latestSnapshot->keywords))
+                                                <span title="Keywords">{{ count($entityUrl->latestSnapshot->keywords) }} Keywords</span>
                                             @endif
-                                            @if($snap->organic_traffic_estimate)
-                                                <span title="Org. Traffic">~{{ number_format($snap->organic_traffic_estimate) }} Traffic</span>
+                                            @if($entityUrl->latestSnapshot->organic_traffic_estimate)
+                                                <span title="Org. Traffic">~{{ number_format($entityUrl->latestSnapshot->organic_traffic_estimate) }} Traffic</span>
                                             @endif
-                                            @if($snap->domain_authority)
-                                                <span title="Domain Authority">DA {{ $snap->domain_authority }}</span>
+                                            @if($entityUrl->latestSnapshot->domain_authority)
+                                                <span title="Domain Authority">DA {{ $entityUrl->latestSnapshot->domain_authority }}</span>
                                             @endif
-                                            @if($snap->backlinks_count)
-                                                <span title="Backlinks">{{ number_format($snap->backlinks_count) }} BL</span>
+                                            @if($entityUrl->latestSnapshot->backlinks_count)
+                                                <span title="Backlinks">{{ number_format($entityUrl->latestSnapshot->backlinks_count) }} BL</span>
                                             @endif
                                         </div>
                                     @elseif($entityUrl->last_checked_at)

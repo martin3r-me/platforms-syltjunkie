@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Symfony\Component\Uid\UuidV7;
 
 class SjEntityUrl extends Model
@@ -50,5 +51,10 @@ class SjEntityUrl extends Model
     public function snapshots(): HasMany
     {
         return $this->hasMany(SjUrlSnapshot::class, 'entity_url_id');
+    }
+
+    public function latestSnapshot(): HasOne
+    {
+        return $this->hasOne(SjUrlSnapshot::class, 'entity_url_id')->latestOfMany('captured_at');
     }
 }

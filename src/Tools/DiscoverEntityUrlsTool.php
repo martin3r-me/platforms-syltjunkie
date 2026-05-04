@@ -9,6 +9,7 @@ use Platform\Core\Contracts\ToolResult;
 use Platform\Integrations\Services\DataForSeoApiService;
 use Platform\Syltjunkie\Models\SjEntity;
 use Platform\Syltjunkie\Models\SjEntityUrl;
+use Platform\Syltjunkie\Models\SjUrlSnapshot;
 use Platform\Syltjunkie\Tools\Concerns\ResolvesSyltjunkieTeam;
 
 class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
@@ -127,7 +128,7 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
                     $entityResult['urls_found'] = $discoveredUrls;
 
                     if (!$dryRun) {
-                        $created = $this->createEntityUrls($rootTeamId, $entity, $discoveredUrls);
+                        $created = $this->createEntityUrls($rootTeamId, $entity, $discoveredUrls, $searchQuery, $serpResults);
                         $entityResult['urls_created'] = $created;
                         $totalUrlsCreated += $created;
                     }
@@ -236,10 +237,12 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
     }
 
     /**
-     * Erstellt Entity-URLs aus den entdeckten Ergebnissen.
+     * Erstellt Entity-URLs aus den entdeckten Ergebnissen und speichert SERP-Snapshot.
      * Überspringt bereits vorhandene URLs (Duplikat-Schutz via unique constraint).
+     *
+     * @param \Platform\Integrations\DTOs\DataForSeo\SerpOrganicResult[] $serpResults
      */
-    protected function createEntityUrls(int $teamId, SjEntity $entity, array $discoveredUrls): int
+    protected function createEntityUrls(int $teamId, SjEntity $entity, array $discoveredUrls, string $searchQuery, array $serpResults): int
     {
         $created = 0;
         $hasPrimary = SjEntityUrl::where('team_id', $teamId)
@@ -248,14 +251,19 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
             ->where('is_active', true)
             ->exists();
 
+        // SERP-Ergebnisse als raw_response aufbereiten
+        $rawSerpData = array_map(fn($r) => $r->toArray(), $serpResults);
+
         foreach ($discoveredUrls as $urlData) {
             // Prüfen ob URL bereits existiert
-            $exists = SjEntityUrl::where('team_id', $teamId)
+            $existing = SjEntityUrl::where('team_id', $teamId)
                 ->where('entity_id', $entity->id)
                 ->where('url', $urlData['url'])
-                ->exists();
+                ->first();
 
-            if ($exists) {
+            if ($existing) {
+                // Snapshot für bestehende URL erstellen (falls noch keiner für heute)
+                $this->createSerpSnapshot($teamId, $existing, $searchQuery, $urlData, $rawSerpData);
                 continue;
             }
 
@@ -266,7 +274,7 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
                 $hasPrimary = true;
             }
 
-            SjEntityUrl::create([
+            $entityUrl = SjEntityUrl::create([
                 'team_id' => $teamId,
                 'entity_id' => $entity->id,
                 'url' => $urlData['url'],
@@ -276,10 +284,50 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
                 'last_checked_at' => now(),
             ]);
 
+            // SERP-Snapshot für neue URL erstellen
+            $this->createSerpSnapshot($teamId, $entityUrl, $searchQuery, $urlData, $rawSerpData);
+
             $created++;
         }
 
         return $created;
+    }
+
+    /**
+     * Erstellt einen Snapshot aus den SERP-Discovery-Daten.
+     */
+    protected function createSerpSnapshot(int $teamId, SjEntityUrl $entityUrl, string $searchQuery, array $urlData, array $rawSerpData): void
+    {
+        $today = now()->toDateString();
+
+        // Nur ein Snapshot pro URL pro Tag
+        $exists = SjUrlSnapshot::where('entity_url_id', $entityUrl->id)
+            ->where('captured_at', $today)
+            ->exists();
+
+        if ($exists) {
+            return;
+        }
+
+        SjUrlSnapshot::create([
+            'team_id' => $teamId,
+            'entity_url_id' => $entityUrl->id,
+            'captured_at' => $today,
+            'keywords' => [
+                [
+                    'keyword' => $searchQuery,
+                    'position' => $urlData['position'] ?? null,
+                    'search_volume' => null,
+                    'cpc' => null,
+                    'competition' => null,
+                ],
+            ],
+            'raw_response' => [
+                'source' => 'serp_discovery',
+                'search_query' => $searchQuery,
+                'serp_results' => $rawSerpData,
+            ],
+        ]);
     }
 
     public function getMetadata(): array

@@ -165,7 +165,7 @@ class FetchPageSnapshotsTool implements ToolContract, ToolMetadataContract
                             'internal_links_count' => $pageData->internalLinks,
                             'external_links_count' => $pageData->externalLinks,
                             'image_count' => $pageData->images,
-                            'load_time' => $pageData->loadTime,
+                            'load_time' => $pageData->loadTime !== null ? round($pageData->loadTime / 1000, 2) : null,
                             'onpage_score' => $pageData->onpageScore,
                             'content_hash' => $contentHash,
                             'raw_response' => $pageData->toArray(),

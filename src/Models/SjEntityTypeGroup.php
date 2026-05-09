@@ -16,15 +16,22 @@ class SjEntityTypeGroup extends Model
     protected $fillable = [
         'team_id',
         'code',
+        'prefix',
         'name',
+        'nav_label',
+        'singular',
         'description',
         'icon',
+        'color',
+        'template',
+        'show_on_map',
         'sort_order',
         'is_active',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'show_on_map' => 'boolean',
         'sort_order' => 'integer',
     ];
 

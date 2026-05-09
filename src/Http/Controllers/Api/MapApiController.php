@@ -22,7 +22,8 @@ class MapApiController extends ApiController
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->with([
-                'entityType:id,code,name,color,icon',
+                'entityType:id,code,name,color,icon,group_id',
+                'entityType.group:id,code,prefix',
                 'images' => fn ($q) => $q->wherePivot('is_primary', true)->limit(1),
                 'images.contextFile',
             ]);
@@ -57,6 +58,8 @@ class MapApiController extends ApiController
                 'lat' => $entity->latitude,
                 'lng' => $entity->longitude,
                 'ort' => $entity->ort,
+                'group' => $entity->entityType?->group?->code,
+                'group_prefix' => $entity->entityType?->group?->prefix ?? $entity->entityType?->group?->code,
                 'type' => $entity->entityType ? [
                     'code' => $entity->entityType->code,
                     'name' => $entity->entityType->name,

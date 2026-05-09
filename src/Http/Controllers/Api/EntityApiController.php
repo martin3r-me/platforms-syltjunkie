@@ -22,7 +22,8 @@ class EntityApiController extends ApiController
         $query = SjEntity::where('team_id', $teamId)
             ->where('is_active', true)
             ->with([
-                'entityType:id,code,name,color,icon',
+                'entityType:id,code,name,color,icon,group_id',
+                'entityType.group:id,code,prefix',
                 'images' => fn ($q) => $q->wherePivot('is_primary', true)->limit(1),
                 'images.contextFile',
             ]);
@@ -67,6 +68,7 @@ class EntityApiController extends ApiController
         // Transform results
         $paginator->getCollection()->transform(function (SjEntity $entity) {
             $primaryImage = $entity->images->first();
+            $tags = $entity->extra_fields['tags'] ?? [];
 
             return [
                 'id' => $entity->id,
@@ -78,6 +80,11 @@ class EntityApiController extends ApiController
                 'longitude' => $entity->longitude,
                 'status' => $entity->status,
                 'season' => $entity->season,
+                'entity_type_code' => $entity->entityType?->code,
+                'group' => $entity->entityType?->group?->code,
+                'group_prefix' => $entity->entityType?->group?->prefix ?? $entity->entityType?->group?->code,
+                'type_label' => $entity->entityType?->name,
+                'tags' => $tags,
                 'entity_type' => $entity->entityType ? [
                     'code' => $entity->entityType->code,
                     'name' => $entity->entityType->name,
@@ -123,6 +130,8 @@ class EntityApiController extends ApiController
             return $this->notFound('Entity not found.');
         }
 
+        $tags = $entity->extra_fields['tags'] ?? [];
+
         $data = [
             'id' => $entity->id,
             'slug' => $entity->slug,
@@ -133,6 +142,11 @@ class EntityApiController extends ApiController
             'longitude' => $entity->longitude,
             'status' => $entity->status,
             'season' => $entity->season,
+            'entity_type_code' => $entity->entityType?->code,
+            'group' => $entity->entityType?->group?->code,
+            'group_prefix' => $entity->entityType?->group?->prefix ?? $entity->entityType?->group?->code,
+            'type_label' => $entity->entityType?->name,
+            'tags' => $tags,
             'entity_type' => $entity->entityType ? [
                 'code' => $entity->entityType->code,
                 'name' => $entity->entityType->name,
@@ -141,6 +155,7 @@ class EntityApiController extends ApiController
                 'group' => $entity->entityType->group ? [
                     'code' => $entity->entityType->group->code,
                     'name' => $entity->entityType->group->name,
+                    'prefix' => $entity->entityType->group->prefix ?? $entity->entityType->group->code,
                 ] : null,
             ] : null,
             'extra_fields' => $entity->extra_fields,

@@ -189,7 +189,7 @@ class SjInstagramInsightsService
         if (isset($data['data'])) {
             foreach ($data['data'] as $insight) {
                 $values = [];
-                foreach ($insight['values'] as $value) {
+                foreach ($insight['values'] ?? [] as $value) {
                     if ($metricType === 'total_value') {
                         $values[] = $value['total_value']['value'] ?? 0;
                     } else {
@@ -256,7 +256,7 @@ class SjInstagramInsightsService
 
         if (isset($data['data'])) {
             foreach ($data['data'] as $insight) {
-                foreach ($insight['values'] as $value) {
+                foreach ($insight['values'] ?? [] as $value) {
                     $insights[$insight['name']] = $value['value'] ?? 0;
                 }
             }

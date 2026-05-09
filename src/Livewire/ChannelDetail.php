@@ -5,16 +5,13 @@ namespace Platform\Syltjunkie\Livewire;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Platform\Integrations\Models\IntegrationConnection;
 use Platform\Integrations\Models\IntegrationsInstagramAccount;
 use Platform\Integrations\Models\IntegrationsFacebookPage;
+use Platform\Syltjunkie\Jobs\SyncChannelJob;
 use Platform\Syltjunkie\Models\SjChannel;
 use Platform\Syltjunkie\Models\SjFacebookPost;
 use Platform\Syltjunkie\Models\SjInstagramAccountInsight;
 use Platform\Syltjunkie\Models\SjInstagramMedia;
-use Platform\Syltjunkie\Services\SjFacebookPageService;
-use Platform\Syltjunkie\Services\SjInstagramMediaService;
-use Platform\Syltjunkie\Services\SjInstagramInsightsService;
 
 class ChannelDetail extends Component
 {
@@ -36,74 +33,19 @@ class ChannelDetail extends Component
         $this->resetPage();
     }
 
-    public function syncMedia(): void
+    public function dispatchSync(): void
     {
-        if ($this->channel->type === 'instagram') {
-            $this->syncInstagramMedia();
-        } elseif ($this->channel->type === 'facebook') {
-            $this->syncFacebookPosts();
+        if ($this->channel->isSyncing()) {
+            return;
         }
+
+        $this->channel->update(['sync_status' => 'syncing']);
+        SyncChannelJob::dispatch($this->channel);
     }
 
-    public function syncInsights(): void
+    public function refreshSyncStatus(): void
     {
-        if ($this->channel->type !== 'instagram') {
-            return;
-        }
-
-        $connection = IntegrationConnection::find($this->channel->integration_connection_id);
-        $account = IntegrationsInstagramAccount::find($this->channel->instagram_account_id);
-
-        if (!$connection || !$account) {
-            session()->flash('error', 'Integration Connection oder Instagram Account nicht gefunden.');
-            return;
-        }
-
-        try {
-            $insightsService = app(SjInstagramInsightsService::class);
-            $insightsService->syncAccountInsights($account, $connection);
-            $mediaResult = $insightsService->syncMediaInsights($account, $connection);
-            session()->flash('success', "Account Insights + {$mediaResult['synced']} Media Insights synchronisiert.");
-        } catch (\Exception $e) {
-            session()->flash('error', 'Fehler: ' . $e->getMessage());
-        }
-    }
-
-    protected function syncInstagramMedia(): void
-    {
-        $connection = IntegrationConnection::find($this->channel->integration_connection_id);
-        $account = IntegrationsInstagramAccount::find($this->channel->instagram_account_id);
-
-        if (!$connection || !$account) {
-            session()->flash('error', 'Integration Connection oder Instagram Account nicht gefunden.');
-            return;
-        }
-
-        try {
-            $mediaService = app(SjInstagramMediaService::class);
-            $result = $mediaService->syncMedia($account, $connection, $this->channel->team_id);
-            session()->flash('success', count($result) . ' Media-Items synchronisiert.');
-        } catch (\Exception $e) {
-            session()->flash('error', 'Fehler: ' . $e->getMessage());
-        }
-    }
-
-    protected function syncFacebookPosts(): void
-    {
-        $page = IntegrationsFacebookPage::find($this->channel->facebook_page_id);
-
-        if (!$page) {
-            session()->flash('error', 'Facebook Page nicht gefunden.');
-            return;
-        }
-
-        try {
-            $service = app(SjFacebookPageService::class);
-            $result = $service->syncPosts($page, $this->channel->team_id);
-            session()->flash('success', count($result) . ' Facebook-Posts synchronisiert.');
-        } catch (\Exception $e) {
-            session()->flash('error', 'Fehler: ' . $e->getMessage());
-        }
+        $this->channel->refresh();
     }
 
     public function render()

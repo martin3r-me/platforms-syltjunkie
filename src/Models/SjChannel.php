@@ -19,11 +19,20 @@ class SjChannel extends Model
         'name',
         'status',
         'config',
+        'sync_status',
+        'sync_error',
+        'last_synced_at',
     ];
 
     protected $casts = [
         'config' => 'array',
+        'last_synced_at' => 'datetime',
     ];
+
+    public function isSyncing(): bool
+    {
+        return $this->sync_status === 'syncing';
+    }
 
     protected static function booted(): void
     {

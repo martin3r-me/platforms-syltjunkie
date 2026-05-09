@@ -2,6 +2,7 @@
 
 namespace Platform\Syltjunkie;
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -62,6 +63,25 @@ class SyltjunkieServiceProvider extends ServiceProvider
                 \Platform\Syltjunkie\Console\Commands\SyncFacebookPosts::class,
             ]);
         }
+
+        $this->app->booted(function () {
+            $schedule = $this->app->make(Schedule::class);
+
+            $schedule->command('syltjunkie:sync-instagram-media')
+                ->dailyAt('03:00')
+                ->withoutOverlapping()
+                ->runInBackground();
+
+            $schedule->command('syltjunkie:sync-instagram-insights')
+                ->dailyAt('03:30')
+                ->withoutOverlapping()
+                ->runInBackground();
+
+            $schedule->command('syltjunkie:sync-facebook-posts')
+                ->dailyAt('04:00')
+                ->withoutOverlapping()
+                ->runInBackground();
+        });
 
         // Error Reporter Registration
         try {

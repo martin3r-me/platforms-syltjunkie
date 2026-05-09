@@ -13,15 +13,19 @@
 
     <x-ui-page-container>
         <div class="space-y-6">
-            {{-- Flash Messages --}}
-            @if(session()->has('success'))
-                <div class="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-[13px] text-green-800">
-                    {{ session('success') }}
+            {{-- Sync Status --}}
+            @if($channel->sync_status === 'syncing')
+                <div wire:poll.5s="refreshSyncStatus" class="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-[13px] text-blue-800 flex items-center gap-2">
+                    @svg('heroicon-o-arrow-path', 'w-4 h-4 animate-spin')
+                    Synchronisierung läuft...
                 </div>
-            @endif
-            @if(session()->has('error'))
+            @elseif($channel->sync_status === 'failed')
                 <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-[13px] text-red-800">
-                    {{ session('error') }}
+                    Sync fehlgeschlagen: {{ $channel->sync_error }}
+                </div>
+            @elseif($channel->sync_status === 'completed' && $channel->last_synced_at)
+                <div class="rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-[13px] text-green-800">
+                    Zuletzt synchronisiert: {{ $channel->last_synced_at->format('d.m.Y H:i') }}
                 </div>
             @endif
 
@@ -56,18 +60,15 @@
 
                 @if($channel->type === 'instagram' || $channel->type === 'facebook')
                 <div class="flex items-center gap-2">
-                    <button wire:click="syncMedia" wire:loading.attr="disabled"
+                    <button wire:click="dispatchSync"
+                        @if($channel->isSyncing()) disabled @endif
                         class="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
-                        <span wire:loading.remove wire:target="syncMedia">@svg('heroicon-o-arrow-path', 'w-3.5 h-3.5 inline -mt-0.5') {{ $channel->type === 'facebook' ? 'Posts sync' : 'Media sync' }}</span>
-                        <span wire:loading wire:target="syncMedia">Synchronisiere...</span>
+                        @if($channel->isSyncing())
+                            @svg('heroicon-o-arrow-path', 'w-3.5 h-3.5 inline -mt-0.5 animate-spin') Syncing...
+                        @else
+                            @svg('heroicon-o-arrow-path', 'w-3.5 h-3.5 inline -mt-0.5') Sync
+                        @endif
                     </button>
-                    @if($channel->type === 'instagram')
-                    <button wire:click="syncInsights" wire:loading.attr="disabled"
-                        class="rounded-lg border border-gray-200 px-3 py-1.5 text-[12px] font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
-                        <span wire:loading.remove wire:target="syncInsights">@svg('heroicon-o-chart-bar', 'w-3.5 h-3.5 inline -mt-0.5') Insights sync</span>
-                        <span wire:loading wire:target="syncInsights">Synchronisiere...</span>
-                    </button>
-                    @endif
                 </div>
                 @endif
             </div>

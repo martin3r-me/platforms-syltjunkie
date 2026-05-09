@@ -45,6 +45,7 @@ class UpdateEntityTool implements ToolContract, ToolMetadataContract
                 'season' => ['type' => 'string', 'enum' => ['year_round', 'sommer', 'winter', 'event']],
                 'status' => ['type' => 'string', 'enum' => ['aktiv', 'saisonal_geschlossen', 'dauerhaft_geschlossen']],
                 'source' => ['type' => 'string', 'enum' => ['manuell', 'crowdsourcing', 'import_google', 'import_instagram', 'self_service']],
+                'geometry' => ['type' => ['object', 'null'], 'description' => 'Optional: GeoJSON Geometry (Point, LineString, Polygon).'],
                 'extra_fields' => ['type' => 'object', 'description' => 'Optional: Typ-spezifische Felder (überschreibt komplett).'],
                 'is_active' => ['type' => 'boolean', 'description' => 'Optional: Aktiv/Inaktiv.'],
             ],
@@ -66,7 +67,7 @@ class UpdateEntityTool implements ToolContract, ToolMetadataContract
                 return ToolResult::error('NOT_FOUND', 'Entity nicht gefunden.');
             }
 
-            $updatable = ['name', 'slug', 'description', 'ort', 'latitude', 'longitude', 'season', 'status', 'source', 'is_active'];
+            $updatable = ['name', 'slug', 'description', 'ort', 'latitude', 'longitude', 'geometry', 'season', 'status', 'source', 'is_active'];
             foreach ($updatable as $field) {
                 if (array_key_exists($field, $arguments)) {
                     $entity->{$field} = $arguments[$field];

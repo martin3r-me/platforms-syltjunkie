@@ -69,6 +69,38 @@
                 <p class="text-[12px] text-gray-400">Starte mit dem Anlegen von Entity Types und f&uuml;lle den Graph.</p>
             </div>
             @endif
+
+            {{-- Trend Signals --}}
+            @if($trendSignals->count())
+            <div class="bg-white rounded-lg border border-gray-200">
+                <div class="px-4 py-3 border-b border-gray-100">
+                    <h2 class="text-[13px] font-semibold text-gray-700">Trend Signals</h2>
+                </div>
+                <div class="divide-y divide-gray-100">
+                    @foreach($trendSignals as $signal)
+                    <div class="flex items-start gap-3 px-4 py-3">
+                        <div class="flex-shrink-0 mt-1">
+                            <span class="inline-flex w-2 h-2 rounded-full {{ $signal->severity === 'action' ? 'bg-red-400' : ($signal->severity === 'watch' ? 'bg-yellow-400' : 'bg-blue-300') }}"></span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-[13px] font-medium text-gray-900">{{ $signal->title }}</div>
+                            <div class="flex items-center gap-2 mt-1 text-[11px] text-gray-400">
+                                @if($signal->entity)
+                                    <a href="{{ route('syltjunkie.entity.detail', $signal->entity) }}" class="text-blue-600 hover:text-blue-800">{{ $signal->entity->name }}</a>
+                                    <span>&middot;</span>
+                                @endif
+                                <span class="px-1.5 py-0.5 rounded font-medium
+                                    {{ $signal->severity === 'action' ? 'bg-red-50 text-red-600' : ($signal->severity === 'watch' ? 'bg-yellow-50 text-yellow-600' : 'bg-blue-50 text-blue-600') }}">
+                                    {{ $signal->severity }}
+                                </span>
+                                <span>{{ $signal->detected_at->format('d.m.Y') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
         </div>
     </x-ui-page-container>
 

@@ -7,6 +7,7 @@ use Livewire\Component;
 use Platform\Syltjunkie\Models\SjEntity;
 use Platform\Syltjunkie\Models\SjEntityType;
 use Platform\Syltjunkie\Models\SjEntityTypeGroup;
+use Platform\Syltjunkie\Models\SjTrendSignal;
 
 class Dashboard extends Component
 {
@@ -25,11 +26,19 @@ class Dashboard extends Component
             ->limit(10)
             ->get();
 
+        $trendSignals = SjTrendSignal::where('team_id', $team->id)
+            ->whereIn('status', ['new', 'acknowledged'])
+            ->with('entity:id,name')
+            ->orderByDesc('detected_at')
+            ->limit(10)
+            ->get();
+
         return view('syltjunkie::livewire.dashboard', [
             'entityCount' => $entityCount,
             'typeCount' => $typeCount,
             'groupCount' => $groupCount,
             'recentEntities' => $recentEntities,
+            'trendSignals' => $trendSignals,
         ])->layout('platform::layouts.app');
     }
 }

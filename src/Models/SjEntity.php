@@ -25,6 +25,7 @@ class SjEntity extends Model
         'description',
         'latitude',
         'longitude',
+        'geometry',
         'ort',
         'season',
         'status',
@@ -38,6 +39,7 @@ class SjEntity extends Model
         'extra_fields' => 'array',
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
+        'geometry' => 'array',
     ];
 
     protected static function booted(): void
@@ -106,6 +108,11 @@ class SjEntity extends Model
     public function ctaEvents(): HasMany
     {
         return $this->hasMany(SjCtaEvent::class, 'entity_id');
+    }
+
+    public function trendSignals(): HasMany
+    {
+        return $this->hasMany(SjTrendSignal::class, 'entity_id');
     }
 
     public function contentPieces(): BelongsToMany

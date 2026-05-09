@@ -438,6 +438,23 @@
                         @endif
                     </div>
 
+                    {{-- Karte & Geometrie --}}
+                    <div class="bg-white rounded-lg border border-gray-200 p-4">
+                        <h2 class="text-[13px] font-semibold text-gray-700 mb-3">Karte & Geometrie</h2>
+                        <div
+                            x-data="entityMap()"
+                            x-init="initMap()"
+                            class="relative"
+                        >
+                            <div wire:ignore id="entity-map" class="w-full h-80 rounded-lg border border-gray-200 z-0"></div>
+                            <div class="mt-2 flex items-center gap-3 text-[11px] text-gray-400">
+                                <span>Klick = Pin setzen</span>
+                                <span>&middot;</span>
+                                <span>Toolbar = Linie/Polygon zeichnen</span>
+                            </div>
+                        </div>
+                    </div>
+
                     {{-- Extra Fields --}}
                     @if($entity->extra_fields && count($entity->extra_fields))
                     <div class="bg-white rounded-lg border border-gray-200 p-4">
@@ -574,6 +591,35 @@
                         </div>
                     </div>
                     @endif
+
+                    {{-- Trend Signals --}}
+                    @if($entitySignals->count())
+                    <div class="bg-white rounded-lg border border-gray-200 p-4">
+                        <h2 class="text-[13px] font-semibold text-gray-700 mb-3">Trend Signals</h2>
+                        <div class="space-y-2">
+                            @foreach($entitySignals as $signal)
+                            <div class="flex items-start gap-2 text-[12px] p-1.5 rounded-lg hover:bg-gray-50">
+                                <div class="flex-shrink-0 mt-1">
+                                    <span class="inline-flex w-2 h-2 rounded-full {{ $signal->severity === 'action' ? 'bg-red-400' : ($signal->severity === 'watch' ? 'bg-yellow-400' : 'bg-blue-300') }}"></span>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="text-gray-900 font-medium">{{ $signal->title }}</div>
+                                    @if($signal->description)
+                                        <div class="text-[11px] text-gray-400 mt-0.5 truncate">{{ $signal->description }}</div>
+                                    @endif
+                                    <div class="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
+                                        <span class="px-1.5 py-0.5 rounded font-medium
+                                            {{ $signal->severity === 'action' ? 'bg-red-50 text-red-600' : ($signal->severity === 'watch' ? 'bg-yellow-50 text-yellow-600' : 'bg-blue-50 text-blue-600') }}">
+                                            {{ $signal->severity }}
+                                        </span>
+                                        <span>{{ $signal->detected_at->format('d.m.Y') }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -582,4 +628,108 @@
     <x-slot name="sidebar">
         <livewire:syltjunkie.sidebar />
     </x-slot>
+
+    @once
+    @push('styles')
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    @endpush
+
+    @push('scripts')
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('entityMap', () => ({
+            map: null,
+            marker: null,
+            drawnItems: null,
+
+            initMap() {
+                const lat = @json($editLatitude) ?? 54.9079;
+                const lng = @json($editLongitude) ?? 8.3047;
+                const hasCoords = @json($editLatitude) !== null;
+                const geometry = @json($geometry);
+
+                this.map = L.map('entity-map').setView([lat, lng], hasCoords ? 15 : 11);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap',
+                    maxZoom: 19,
+                }).addTo(this.map);
+
+                this.drawnItems = new L.FeatureGroup();
+                this.map.addLayer(this.drawnItems);
+
+                // Existing marker
+                if (hasCoords) {
+                    this.marker = L.marker([lat, lng], { draggable: true }).addTo(this.map);
+                    this.marker.on('dragend', (e) => {
+                        const pos = e.target.getLatLng();
+                        this.$wire.saveCoordinates(pos.lat, pos.lng);
+                    });
+                }
+
+                // Existing geometry
+                if (geometry && geometry.type) {
+                    const geoLayer = L.geoJSON(geometry);
+                    geoLayer.eachLayer((l) => this.drawnItems.addLayer(l));
+                    this.map.fitBounds(this.drawnItems.getBounds().pad(0.2));
+                }
+
+                // Draw controls
+                const drawControl = new L.Control.Draw({
+                    edit: { featureGroup: this.drawnItems },
+                    draw: {
+                        polygon: true,
+                        polyline: true,
+                        rectangle: false,
+                        circle: false,
+                        circlemarker: false,
+                        marker: false,
+                    },
+                });
+                this.map.addControl(drawControl);
+
+                // Click to set/move pin
+                this.map.on('click', (e) => {
+                    if (this.marker) {
+                        this.marker.setLatLng(e.latlng);
+                    } else {
+                        this.marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
+                        this.marker.on('dragend', (ev) => {
+                            const pos = ev.target.getLatLng();
+                            this.$wire.saveCoordinates(pos.lat, pos.lng);
+                        });
+                    }
+                    this.$wire.saveCoordinates(e.latlng.lat, e.latlng.lng);
+                });
+
+                // Draw created
+                this.map.on(L.Draw.Event.CREATED, (e) => {
+                    this.drawnItems.addLayer(e.layer);
+                    this.$wire.saveGeometry(e.layer.toGeoJSON().geometry);
+                });
+
+                // Draw edited
+                this.map.on(L.Draw.Event.EDITED, (e) => {
+                    const layers = [];
+                    e.layers.eachLayer((l) => layers.push(l));
+                    if (layers.length === 1) {
+                        this.$wire.saveGeometry(layers[0].toGeoJSON().geometry);
+                    }
+                });
+
+                // Draw deleted
+                this.map.on(L.Draw.Event.DELETED, () => {
+                    if (this.drawnItems.getLayers().length === 0) {
+                        this.$wire.saveGeometry(null);
+                    }
+                });
+            },
+        }));
+    });
+    </script>
+    @endpush
+    @endonce
 </x-ui-page>

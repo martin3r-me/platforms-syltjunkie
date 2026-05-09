@@ -7,15 +7,39 @@ use Livewire\Component;
 use Platform\Syltjunkie\Models\SjEntity;
 use Platform\Syltjunkie\Models\SjKeywordRanking;
 use Platform\Syltjunkie\Models\SjPageChange;
+use Platform\Syltjunkie\Models\SjTrendSignal;
 
 class EntityDetail extends Component
 {
     public SjEntity $entity;
 
+    public ?array $geometry = null;
+    public ?float $editLatitude = null;
+    public ?float $editLongitude = null;
+
     public function mount(SjEntity $entity): void
     {
         abort_unless($entity->team_id === Auth::user()->currentTeam->id, 403);
         $this->entity = $entity;
+        $this->geometry = $entity->geometry;
+        $this->editLatitude = $entity->latitude ? (float) $entity->latitude : null;
+        $this->editLongitude = $entity->longitude ? (float) $entity->longitude : null;
+    }
+
+    public function saveGeometry(?array $geometry): void
+    {
+        $this->entity->update(['geometry' => $geometry]);
+        $this->geometry = $geometry;
+    }
+
+    public function saveCoordinates(float $lat, float $lng): void
+    {
+        $this->entity->update([
+            'latitude' => $lat,
+            'longitude' => $lng,
+        ]);
+        $this->editLatitude = $lat;
+        $this->editLongitude = $lng;
     }
 
     public function render()
@@ -58,10 +82,17 @@ class EntityDetail extends Component
                 ->get();
         }
 
+        $entitySignals = SjTrendSignal::where('entity_id', $this->entity->id)
+            ->whereIn('status', ['new', 'acknowledged'])
+            ->orderByDesc('detected_at')
+            ->limit(10)
+            ->get();
+
         return view('syltjunkie::livewire.entity-detail', [
             'entity' => $this->entity,
             'keywordRankings' => $keywordRankings,
             'recentChanges' => $recentChanges,
+            'entitySignals' => $entitySignals,
         ])->layout('platform::layouts.app');
     }
 }

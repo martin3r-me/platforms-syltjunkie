@@ -53,6 +53,12 @@ class SyltjunkieServiceProvider extends ServiceProvider
 
         $this->registerTools();
 
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \Platform\Syltjunkie\Console\SnapshotCommand::class,
+            ]);
+        }
+
         // Error Reporter Registration
         try {
             resolve(\Platform\Core\Services\ErrorReporterRegistry::class)
@@ -93,6 +99,14 @@ class SyltjunkieServiceProvider extends ServiceProvider
 
             // Google Business Profile
             $registry->register(new \Platform\Syltjunkie\Tools\FetchGoogleBusinessTool());
+
+            // Trend Signals
+            $registry->register(new \Platform\Syltjunkie\Tools\DetectTrendSignalsTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\ListTrendSignalsTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\UpdateTrendSignalTool());
+
+            // Entity Discovery
+            $registry->register(new \Platform\Syltjunkie\Tools\DiscoverEntitiesBySearchTool());
         } catch (\Throwable $e) {}
     }
 

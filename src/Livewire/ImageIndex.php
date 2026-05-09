@@ -15,6 +15,7 @@ class ImageIndex extends Component
 
     public string $search = '';
     public string $filterTag = '';
+    public string $viewMode = 'grid';
     public $pendingUploads = [];
 
     public function updatingSearch(): void
@@ -138,10 +139,47 @@ class ImageIndex extends Component
 
         $totalCount = SjImage::where('team_id', $team->id)->count();
 
+        // Geo-tagged images for map (all, not paginated)
+        $mapImages = [];
+        if ($this->viewMode === 'map') {
+            $mapQuery = SjImage::where('team_id', $team->id)
+                ->whereNotNull('latitude')
+                ->whereNotNull('longitude')
+                ->with('contextFile.variants');
+
+            if ($this->search) {
+                $mapQuery->where(function ($q) {
+                    $q->where('title', 'like', "%{$this->search}%")
+                      ->orWhere('photographer', 'like', "%{$this->search}%")
+                      ->orWhere('description', 'like', "%{$this->search}%");
+                });
+            }
+
+            if ($this->filterTag) {
+                $mapQuery->whereJsonContains('tags', $this->filterTag);
+            }
+
+            $mapImages = $mapQuery->get()->map(fn($img) => [
+                'id' => $img->id,
+                'lat' => (float) $img->latitude,
+                'lng' => (float) $img->longitude,
+                'title' => $img->title ?? 'Ohne Titel',
+                'thumbnail' => $img->thumbnail_url,
+                'tags' => $img->tags ?? [],
+            ])->values()->toArray();
+        }
+
+        $geoCount = SjImage::where('team_id', $team->id)
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->count();
+
         return view('syltjunkie::livewire.image-index', [
             'images' => $images,
             'allTags' => $allTags,
             'totalCount' => $totalCount,
+            'mapImages' => $mapImages,
+            'geoCount' => $geoCount,
         ])->layout('platform::layouts.app');
     }
 }

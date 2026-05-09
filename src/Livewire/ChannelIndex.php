@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Platform\Integrations\Models\IntegrationConnection;
 use Platform\Integrations\Models\IntegrationsInstagramAccount;
+use Platform\Integrations\Models\IntegrationsFacebookPage;
 use Platform\Syltjunkie\Models\SjChannel;
 
 class ChannelIndex extends Component
@@ -17,6 +18,7 @@ class ChannelIndex extends Component
     public string $formType = 'instagram';
     public ?int $formIntegrationConnectionId = null;
     public ?int $formInstagramAccountId = null;
+    public ?int $formFacebookPageId = null;
     public string $formDefaultHashtags = '';
 
     public function openCreateModal(): void
@@ -35,6 +37,7 @@ class ChannelIndex extends Component
         $this->formType = $channel->type;
         $this->formIntegrationConnectionId = $channel->integration_connection_id;
         $this->formInstagramAccountId = $channel->instagram_account_id;
+        $this->formFacebookPageId = $channel->facebook_page_id;
         $this->formDefaultHashtags = implode(', ', $channel->config['default_hashtags'] ?? []);
         $this->showModal = true;
     }
@@ -54,6 +57,9 @@ class ChannelIndex extends Component
         }
         if ($this->formInstagramAccountId) {
             $config['instagram_account_id'] = $this->formInstagramAccountId;
+        }
+        if ($this->formFacebookPageId) {
+            $config['facebook_page_id'] = $this->formFacebookPageId;
         }
         if ($this->formDefaultHashtags) {
             $config['default_hashtags'] = array_map('trim', explode(',', $this->formDefaultHashtags));
@@ -102,6 +108,7 @@ class ChannelIndex extends Component
         $this->formType = 'instagram';
         $this->formIntegrationConnectionId = null;
         $this->formInstagramAccountId = null;
+        $this->formFacebookPageId = null;
         $this->formDefaultHashtags = '';
     }
 
@@ -125,10 +132,16 @@ class ChannelIndex extends Component
             ->whereHas('integration', fn($q) => $q->where('key', 'meta'))
             ->get();
 
+        // Available Facebook pages for the modal
+        $facebookPages = IntegrationsFacebookPage::whereHas('integrationConnection', function ($q) use ($team) {
+            $q->whereHas('shares', fn($s) => $s->where('team_id', $team->id)->orWhereNull('team_id'));
+        })->get();
+
         return view('syltjunkie::livewire.channel-index', [
             'channels' => $channels,
             'instagramAccounts' => $instagramAccounts,
             'integrationConnections' => $integrationConnections,
+            'facebookPages' => $facebookPages,
         ])->layout('platform::layouts.app');
     }
 }

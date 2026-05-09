@@ -7,10 +7,12 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Platform\Integrations\Models\IntegrationConnection;
 use Platform\Integrations\Models\IntegrationsInstagramAccount;
-use Platform\Integrations\Services\MetaIntegrationService;
+use Platform\Integrations\Models\IntegrationsFacebookPage;
 use Platform\Syltjunkie\Models\SjChannel;
+use Platform\Syltjunkie\Models\SjFacebookPost;
 use Platform\Syltjunkie\Models\SjInstagramAccountInsight;
 use Platform\Syltjunkie\Models\SjInstagramMedia;
+use Platform\Syltjunkie\Services\SjFacebookPageService;
 use Platform\Syltjunkie\Services\SjInstagramMediaService;
 use Platform\Syltjunkie\Services\SjInstagramInsightsService;
 
@@ -19,7 +21,7 @@ class ChannelDetail extends Component
     use WithPagination;
 
     public SjChannel $channel;
-    public string $mediaFilter = 'all'; // all, image, video, carousel_album, reel, story
+    public string $mediaFilter = 'all';
 
     public function mount(SjChannel $channel): void
     {
@@ -36,24 +38,10 @@ class ChannelDetail extends Component
 
     public function syncMedia(): void
     {
-        if ($this->channel->type !== 'instagram') {
-            return;
-        }
-
-        $connection = IntegrationConnection::find($this->channel->integration_connection_id);
-        $account = IntegrationsInstagramAccount::find($this->channel->instagram_account_id);
-
-        if (!$connection || !$account) {
-            session()->flash('error', 'Integration Connection oder Instagram Account nicht gefunden.');
-            return;
-        }
-
-        try {
-            $mediaService = app(SjInstagramMediaService::class);
-            $result = $mediaService->syncMedia($account, $connection, $this->channel->team_id);
-            session()->flash('success', count($result) . ' Media-Items synchronisiert.');
-        } catch (\Exception $e) {
-            session()->flash('error', 'Fehler: ' . $e->getMessage());
+        if ($this->channel->type === 'instagram') {
+            $this->syncInstagramMedia();
+        } elseif ($this->channel->type === 'facebook') {
+            $this->syncFacebookPosts();
         }
     }
 
@@ -81,6 +69,43 @@ class ChannelDetail extends Component
         }
     }
 
+    protected function syncInstagramMedia(): void
+    {
+        $connection = IntegrationConnection::find($this->channel->integration_connection_id);
+        $account = IntegrationsInstagramAccount::find($this->channel->instagram_account_id);
+
+        if (!$connection || !$account) {
+            session()->flash('error', 'Integration Connection oder Instagram Account nicht gefunden.');
+            return;
+        }
+
+        try {
+            $mediaService = app(SjInstagramMediaService::class);
+            $result = $mediaService->syncMedia($account, $connection, $this->channel->team_id);
+            session()->flash('success', count($result) . ' Media-Items synchronisiert.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Fehler: ' . $e->getMessage());
+        }
+    }
+
+    protected function syncFacebookPosts(): void
+    {
+        $page = IntegrationsFacebookPage::find($this->channel->facebook_page_id);
+
+        if (!$page) {
+            session()->flash('error', 'Facebook Page nicht gefunden.');
+            return;
+        }
+
+        try {
+            $service = app(SjFacebookPageService::class);
+            $result = $service->syncPosts($page, $this->channel->team_id);
+            session()->flash('success', count($result) . ' Facebook-Posts synchronisiert.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Fehler: ' . $e->getMessage());
+        }
+    }
+
     public function render()
     {
         $team = Auth::user()->currentTeam;
@@ -89,6 +114,8 @@ class ChannelDetail extends Component
         $accountInsight = null;
         $media = null;
         $mediaStats = null;
+        $facebookPage = null;
+        $facebookPosts = null;
 
         if ($this->channel->type === 'instagram' && $this->channel->instagram_account_id) {
             $instagramAccount = IntegrationsInstagramAccount::find($this->channel->instagram_account_id);
@@ -123,6 +150,15 @@ class ChannelDetail extends Component
             ];
         }
 
+        if ($this->channel->type === 'facebook' && $this->channel->facebook_page_id) {
+            $facebookPage = IntegrationsFacebookPage::find($this->channel->facebook_page_id);
+
+            $facebookPosts = SjFacebookPost::where('facebook_page_id', $this->channel->facebook_page_id)
+                ->where('team_id', $team->id)
+                ->orderByDesc('published_at')
+                ->paginate(24);
+        }
+
         $postCount = $this->channel->posts()->count();
         $lastPost = $this->channel->posts()->latest('published_at')->first();
 
@@ -131,6 +167,8 @@ class ChannelDetail extends Component
             'accountInsight' => $accountInsight,
             'media' => $media,
             'mediaStats' => $mediaStats,
+            'facebookPage' => $facebookPage,
+            'facebookPosts' => $facebookPosts,
             'postCount' => $postCount,
             'lastPost' => $lastPost,
         ])->layout('platform::layouts.app');

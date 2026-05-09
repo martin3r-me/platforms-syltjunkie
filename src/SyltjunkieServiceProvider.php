@@ -59,6 +59,7 @@ class SyltjunkieServiceProvider extends ServiceProvider
                 \Platform\Syltjunkie\Console\Commands\PublishScheduledPosts::class,
                 \Platform\Syltjunkie\Console\Commands\SyncInstagramMedia::class,
                 \Platform\Syltjunkie\Console\Commands\SyncInstagramInsights::class,
+                \Platform\Syltjunkie\Console\Commands\SyncFacebookPosts::class,
             ]);
         }
 

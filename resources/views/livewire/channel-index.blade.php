@@ -135,6 +135,30 @@
                     </div>
                     @endif
 
+                    @if($formType === 'facebook')
+                    <div>
+                        <label class="block text-[11px] text-gray-400 uppercase tracking-wider mb-1">Meta-Verbindung</label>
+                        <select wire:model.live="formIntegrationConnectionId"
+                            class="w-full rounded-lg border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                            <option value="">-- Verbindung wählen --</option>
+                            @foreach($integrationConnections as $conn)
+                                <option value="{{ $conn->id }}">{{ $conn->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] text-gray-400 uppercase tracking-wider mb-1">Facebook Page</label>
+                        <select wire:model="formFacebookPageId"
+                            class="w-full rounded-lg border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                            <option value="">-- Page wählen --</option>
+                            @foreach($facebookPages as $page)
+                                <option value="{{ $page->id }}">{{ $page->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
+
                     <div>
                         <label class="block text-[11px] text-gray-400 uppercase tracking-wider mb-1">Standard-Hashtags (komma-getrennt)</label>
                         <input type="text" wire:model="formDefaultHashtags" placeholder="#sylt, #nordsee"

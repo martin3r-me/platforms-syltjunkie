@@ -81,7 +81,7 @@ class FetchPageSnapshotsTool implements ToolContract, ToolMetadataContract
                 ->where('team_id', $rootTeamId)
                 ->where('is_active', true)
                 ->where('platform', 'website')
-                ->with('entity:id,name,slug,ort,entity_type_id');
+                ->with('entity:id,name,slug,entity_type_id');
 
             if (!empty($arguments['entity_url_id'])) {
                 $q->where('id', (int) $arguments['entity_url_id']);

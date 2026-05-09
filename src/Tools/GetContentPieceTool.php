@@ -47,7 +47,7 @@ class GetContentPieceTool implements ToolContract, ToolMetadataContract
             $piece = SjContentPiece::where('team_id', $rootTeamId)
                 ->with([
                     'keywords:id,keyword,search_volume,search_intent',
-                    'entities:id,name,ort',
+                    'entities:id,name',
                     'channelPosts:id,channel_id,status,post_type,published_at',
                     'channelPosts.channel:id,name,type',
                     'coverImage:id,filename,disk_path',

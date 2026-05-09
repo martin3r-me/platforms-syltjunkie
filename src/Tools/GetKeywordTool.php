@@ -46,7 +46,7 @@ class GetKeywordTool implements ToolContract, ToolMetadataContract
 
             $keyword = SjKeyword::where('team_id', $rootTeamId)
                 ->with([
-                    'entities:id,name,ort',
+                    'entities:id,name',
                     'contentPieces:id,title,status,content_type',
                 ])
                 ->find($arguments['keyword_id'] ?? 0);

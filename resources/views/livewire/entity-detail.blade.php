@@ -648,10 +648,29 @@
 
                 this.map = L.map('entity-map').setView([lat, lng], hasCoords ? 15 : 11);
 
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '&copy; OpenStreetMap',
                     maxZoom: 19,
-                }).addTo(this.map);
+                });
+
+                const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: '&copy; Esri',
+                    maxZoom: 19,
+                });
+
+                const labels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 19,
+                    pane: 'overlayPane',
+                });
+
+                const satellitWithLabels = L.layerGroup([satellite, labels]);
+
+                osm.addTo(this.map);
+
+                L.control.layers({
+                    'Karte': osm,
+                    'Satellit': satellitWithLabels,
+                }, null, { position: 'topright' }).addTo(this.map);
 
                 this.drawnItems = new L.FeatureGroup();
                 this.map.addLayer(this.drawnItems);

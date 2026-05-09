@@ -14,6 +14,33 @@ return [
         'order' => 110,
     ],
 
+    'keyword_discovery' => [
+        'seed_keywords' => [
+            'sylt', 'sylt urlaub', 'sylt restaurant', 'sylt hotel',
+            'sylt ferienwohnung', 'sylt strand', 'sylt aktivitäten',
+            'sylt shopping', 'sylt veranstaltungen', 'sylt anreise',
+            'sylt wetter', 'sylt tipps', 'westerland', 'kampen sylt',
+            'list sylt', 'hörnum', 'keitum',
+        ],
+        'min_volume' => 50,
+        'max_keywords_per_seed' => 50,
+        'opportunity_min_volume' => 200,
+        'intent_patterns' => [
+            'transactional' => ['buchen', 'kaufen', 'bestellen', 'mieten', 'reservieren', 'ticket', 'preis', 'kosten', 'günstig', 'angebot'],
+            'commercial' => ['beste', 'top', 'vergleich', 'empfehlung', 'bewertung', 'test', 'erfahrung'],
+            'navigational' => ['öffnungszeiten', 'adresse', 'telefon', 'kontakt', 'anfahrt', 'karte', 'standort'],
+        ],
+        'topic_patterns' => [
+            'gastronomie' => ['restaurant', 'café', 'cafe', 'bar', 'essen', 'fisch', 'brötchen', 'frühstück', 'dining'],
+            'unterkunft' => ['hotel', 'ferienwohnung', 'fewo', 'pension', 'camping', 'übernachtung', 'zimmer'],
+            'strand_natur' => ['strand', 'düne', 'watt', 'meer', 'wandern', 'radfahren', 'natur', 'kliff'],
+            'aktivitäten' => ['surf', 'yoga', 'golf', 'reiten', 'spa', 'wellness', 'sport', 'tauchen'],
+            'events' => ['veranstaltung', 'konzert', 'festival', 'markt', 'silvester', 'weihnacht'],
+            'shopping' => ['shopping', 'boutique', 'mode', 'outlet', 'laden', 'geschäft'],
+            'anreise' => ['autozug', 'fähre', 'flug', 'bahn', 'anreise', 'parken'],
+        ],
+    ],
+
     'sidebar' => [
         [
             'group' => 'Entity Graph',

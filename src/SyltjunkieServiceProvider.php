@@ -61,6 +61,8 @@ class SyltjunkieServiceProvider extends ServiceProvider
                 \Platform\Syltjunkie\Console\Commands\SyncInstagramMedia::class,
                 \Platform\Syltjunkie\Console\Commands\SyncInstagramInsights::class,
                 \Platform\Syltjunkie\Console\Commands\SyncFacebookPosts::class,
+                \Platform\Syltjunkie\Console\Commands\FetchEntityData::class,
+                \Platform\Syltjunkie\Console\Commands\DiscoverKeywords::class,
             ]);
         }
 
@@ -79,6 +81,24 @@ class SyltjunkieServiceProvider extends ServiceProvider
 
             $schedule->command('syltjunkie:sync-facebook-posts')
                 ->dailyAt('04:00')
+                ->withoutOverlapping()
+                ->runInBackground();
+
+            // Google Business: nightly, rotates ~200 entities per run (3-day freshness)
+            $schedule->command('syltjunkie:fetch-entity-data --type=google_business --detect-trends')
+                ->dailyAt('04:30')
+                ->withoutOverlapping()
+                ->runInBackground();
+
+            // Keyword Rankings: nightly, rotates ~50 domains per run (14-day freshness)
+            $schedule->command('syltjunkie:fetch-entity-data --type=rankings --detect-trends')
+                ->dailyAt('05:00')
+                ->withoutOverlapping()
+                ->runInBackground();
+
+            // Keyword Discovery: monthly, expand seeds + detect opportunities
+            $schedule->command('syltjunkie:discover-keywords --detect-opportunities')
+                ->monthlyOn(1, '06:00')
                 ->withoutOverlapping()
                 ->runInBackground();
         });

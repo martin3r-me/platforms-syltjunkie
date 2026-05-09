@@ -11,6 +11,7 @@ use Platform\Syltjunkie\Livewire\ReviewIndex;
 use Platform\Syltjunkie\Livewire\MapIndex;
 use Platform\Syltjunkie\Livewire\ImageIndex;
 use Platform\Syltjunkie\Livewire\ChannelIndex;
+use Platform\Syltjunkie\Livewire\ChannelDetail;
 use Platform\Syltjunkie\Livewire\ChannelPostIndex;
 use Platform\Syltjunkie\Livewire\ChannelPostComposer;
 
@@ -25,5 +26,6 @@ Route::get('/reviews', ReviewIndex::class)->name('syltjunkie.reviews.index');
 Route::get('/map', MapIndex::class)->name('syltjunkie.map.index');
 Route::get('/images', ImageIndex::class)->name('syltjunkie.images.index');
 Route::get('/channels', ChannelIndex::class)->name('syltjunkie.channels.index');
+Route::get('/channels/{channel}', ChannelDetail::class)->name('syltjunkie.channels.detail');
 Route::get('/posts', ChannelPostIndex::class)->name('syltjunkie.posts.index');
 Route::get('/posts/create', ChannelPostComposer::class)->name('syltjunkie.posts.create');

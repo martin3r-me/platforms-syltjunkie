@@ -40,7 +40,7 @@
                                 @endif
                             </div>
                             <div>
-                                <div class="text-[14px] font-medium text-gray-900">{{ $channel->name }}</div>
+                                <a href="{{ route('syltjunkie.channels.detail', $channel) }}" wire:navigate class="text-[14px] font-medium text-gray-900 hover:text-blue-600">{{ $channel->name }}</a>
                                 <div class="flex items-center gap-2 mt-0.5">
                                     <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
                                         {{ $channel->type }}

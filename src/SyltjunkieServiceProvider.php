@@ -56,6 +56,9 @@ class SyltjunkieServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 \Platform\Syltjunkie\Console\SnapshotCommand::class,
+                \Platform\Syltjunkie\Console\Commands\PublishScheduledPosts::class,
+                \Platform\Syltjunkie\Console\Commands\SyncInstagramMedia::class,
+                \Platform\Syltjunkie\Console\Commands\SyncInstagramInsights::class,
             ]);
         }
 

@@ -4,18 +4,23 @@ namespace Platform\Syltjunkie\Livewire;
 
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
+use Livewire\WithFileUploads;
+use Platform\Core\Services\ContextFileService;
 use Platform\Syltjunkie\Models\SjEntity;
+use Platform\Syltjunkie\Models\SjImage;
 use Platform\Syltjunkie\Models\SjKeywordRanking;
 use Platform\Syltjunkie\Models\SjPageChange;
 use Platform\Syltjunkie\Models\SjTrendSignal;
 
 class EntityDetail extends Component
 {
+    use WithFileUploads;
     public SjEntity $entity;
 
     public ?array $geometry = null;
     public ?float $editLatitude = null;
     public ?float $editLongitude = null;
+    public $imageUpload;
 
     public function mount(SjEntity $entity): void
     {
@@ -40,6 +45,63 @@ class EntityDetail extends Component
         ]);
         $this->editLatitude = $lat;
         $this->editLongitude = $lng;
+    }
+
+    public function uploadEntityImage(): void
+    {
+        $this->validate([
+            'imageUpload' => 'required|image|max:20480',
+        ]);
+
+        $team = Auth::user()->currentTeam;
+        $service = app(ContextFileService::class);
+
+        $result = $service->uploadForContext(
+            $this->imageUpload,
+            SjImage::class,
+            0,
+            [
+                'team_id' => $team->id,
+                'user_id' => Auth::id(),
+                'folder' => 'syltjunkie',
+                'generate_variants' => true,
+            ]
+        );
+
+        $contextFile = \Platform\Core\Models\ContextFile::find($result['id']);
+        $meta = $contextFile->meta ?? [];
+
+        $image = SjImage::create([
+            'team_id' => $team->id,
+            'context_file_id' => $result['id'],
+            'latitude' => $meta['gps']['latitude'] ?? null,
+            'longitude' => $meta['gps']['longitude'] ?? null,
+            'title' => pathinfo($this->imageUpload->getClientOriginalName(), PATHINFO_FILENAME),
+        ]);
+
+        $this->entity->images()->attach($image->id, [
+            'sort_order' => $this->entity->images()->count(),
+            'is_primary' => !$this->entity->images()->wherePivot('is_primary', true)->exists(),
+        ]);
+
+        $this->imageUpload = null;
+    }
+
+    public function unlinkImage(int $imageId): void
+    {
+        $this->entity->images()->detach($imageId);
+    }
+
+    public function setPrimaryImage(int $imageId): void
+    {
+        // Reset all to non-primary
+        $this->entity->images()->updateExistingPivot(
+            $this->entity->images->pluck('id')->toArray(),
+            ['is_primary' => false]
+        );
+
+        // Set the selected one as primary
+        $this->entity->images()->updateExistingPivot($imageId, ['is_primary' => true]);
     }
 
     public function render()
@@ -88,11 +150,16 @@ class EntityDetail extends Component
             ->limit(10)
             ->get();
 
+        $entityImages = $this->entity->images()
+            ->with('contextFile.variants')
+            ->get();
+
         return view('syltjunkie::livewire.entity-detail', [
             'entity' => $this->entity,
             'keywordRankings' => $keywordRankings,
             'recentChanges' => $recentChanges,
             'entitySignals' => $entitySignals,
+            'entityImages' => $entityImages,
         ])->layout('platform::layouts.app');
     }
 }

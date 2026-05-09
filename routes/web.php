@@ -9,6 +9,7 @@ use Platform\Syltjunkie\Livewire\RankingIndex;
 use Platform\Syltjunkie\Livewire\PageChangeIndex;
 use Platform\Syltjunkie\Livewire\ReviewIndex;
 use Platform\Syltjunkie\Livewire\MapIndex;
+use Platform\Syltjunkie\Livewire\ImageIndex;
 
 Route::get('/', Dashboard::class)->name('syltjunkie.dashboard');
 Route::get('/entities', EntityIndex::class)->name('syltjunkie.entities.index');
@@ -19,3 +20,4 @@ Route::get('/rankings', RankingIndex::class)->name('syltjunkie.rankings.index');
 Route::get('/page-changes', PageChangeIndex::class)->name('syltjunkie.page-changes.index');
 Route::get('/reviews', ReviewIndex::class)->name('syltjunkie.reviews.index');
 Route::get('/map', MapIndex::class)->name('syltjunkie.map.index');
+Route::get('/images', ImageIndex::class)->name('syltjunkie.images.index');

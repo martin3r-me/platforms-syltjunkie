@@ -121,4 +121,17 @@ class SjEntity extends Model
             ->withPivot(['display_order', 'is_primary', 'cta_type', 'cta_override_url'])
             ->withTimestamps();
     }
+
+    public function images(): BelongsToMany
+    {
+        return $this->belongsToMany(SjImage::class, 'sj_image_entity', 'entity_id', 'sj_image_id')
+            ->withPivot(['sort_order', 'is_primary'])
+            ->withTimestamps()
+            ->orderByPivot('sort_order');
+    }
+
+    public function primaryImage(): BelongsToMany
+    {
+        return $this->images()->wherePivot('is_primary', true);
+    }
 }

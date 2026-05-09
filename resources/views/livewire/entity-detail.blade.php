@@ -438,6 +438,72 @@
                         @endif
                     </div>
 
+                    {{-- Bilder --}}
+                    <div class="bg-white rounded-lg border border-gray-200 p-4">
+                        <h2 class="text-[13px] font-semibold text-gray-700 mb-3">Bilder</h2>
+
+                        @if($entityImages->count())
+                        <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3">
+                            @foreach($entityImages as $image)
+                            <div class="relative aspect-[4/3] rounded-lg overflow-hidden group cursor-pointer">
+                                <img src="{{ $image->thumbnail_url }}" alt="{{ $image->title }}" class="w-full h-full object-cover" loading="lazy" />
+
+                                {{-- Primary badge --}}
+                                @if($image->pivot->is_primary)
+                                <span class="absolute top-1 left-1 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-blue-500 text-white">
+                                    Primary
+                                </span>
+                                @endif
+
+                                {{-- Hover actions --}}
+                                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                    @if(!$image->pivot->is_primary)
+                                    <button wire:click="setPrimaryImage({{ $image->id }})" title="Als Primary setzen"
+                                        class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/90 text-blue-600 hover:bg-white">
+                                        @svg('heroicon-o-star', 'w-4 h-4')
+                                    </button>
+                                    @endif
+                                    <button wire:click="unlinkImage({{ $image->id }})" title="Verknüpfung entfernen"
+                                        class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/90 text-red-600 hover:bg-white">
+                                        @svg('heroicon-o-x-mark', 'w-4 h-4')
+                                    </button>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                        @endif
+
+                        {{-- Upload --}}
+                        <div x-data="{ dragging: false }">
+                            <div
+                                @dragover.prevent="dragging = true"
+                                @dragleave.prevent="dragging = false"
+                                @drop.prevent="dragging = false; $refs.entityFileInput.files = $event.dataTransfer.files; $refs.entityFileInput.dispatchEvent(new Event('change'))"
+                                :class="{ 'border-blue-400 bg-blue-50': dragging }"
+                                class="relative rounded-lg border-2 border-dashed border-gray-200 px-4 py-3 text-center cursor-pointer hover:border-gray-300 transition-colors"
+                            >
+                                <input type="file" wire:model="imageUpload" accept="image/*" x-ref="entityFileInput"
+                                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                <div class="flex items-center justify-center gap-2 text-[12px] text-gray-400">
+                                    @svg('heroicon-o-arrow-up-tray', 'w-4 h-4')
+                                    <span wire:loading.remove wire:target="imageUpload">Bild hinzufügen</span>
+                                    <span wire:loading wire:target="imageUpload">Wird geladen...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        @if($imageUpload)
+                        <div class="mt-2 flex items-center gap-2">
+                            <span class="text-[12px] text-gray-500 truncate flex-1">{{ $imageUpload->getClientOriginalName() }}</span>
+                            <button wire:click="uploadEntityImage"
+                                class="rounded bg-blue-600 px-3 py-1 text-[12px] font-medium text-white hover:bg-blue-700">
+                                <span wire:loading.remove wire:target="uploadEntityImage">Hochladen</span>
+                                <span wire:loading wire:target="uploadEntityImage">...</span>
+                            </button>
+                        </div>
+                        @endif
+                    </div>
+
                     {{-- Karte & Geometrie --}}
                     <div class="bg-white rounded-lg border border-gray-200 p-4">
                         <h2 class="text-[13px] font-semibold text-gray-700 mb-3">Karte & Geometrie</h2>

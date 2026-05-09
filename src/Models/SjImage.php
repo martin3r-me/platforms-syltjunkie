@@ -90,6 +90,13 @@ class SjImage extends Model
             ->withTimestamps();
     }
 
+    public function contentPieces(): BelongsToMany
+    {
+        return $this->belongsToMany(SjContentPiece::class, 'sj_content_images', 'image_id', 'content_piece_id')
+            ->withPivot(['sort_order', 'role'])
+            ->withTimestamps();
+    }
+
     public function getThumbnailUrlAttribute(): string
     {
         $thumbnail = $this->contextFile?->thumbnail;

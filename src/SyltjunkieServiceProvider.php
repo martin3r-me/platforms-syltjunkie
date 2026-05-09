@@ -158,6 +158,21 @@ class SyltjunkieServiceProvider extends ServiceProvider
 
             // Entity Discovery
             $registry->register(new \Platform\Syltjunkie\Tools\DiscoverEntitiesBySearchTool());
+
+            // Keywords
+            $registry->register(new \Platform\Syltjunkie\Tools\ListKeywordsTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\GetKeywordTool());
+
+            // Content Pieces
+            $registry->register(new \Platform\Syltjunkie\Tools\ListContentPiecesTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\GetContentPieceTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\CreateContentPieceTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\UpdateContentPieceTool());
+
+            // Channel Posts
+            $registry->register(new \Platform\Syltjunkie\Tools\ListChannelPostsTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\CreateChannelPostTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\PublishChannelPostTool());
         } catch (\Throwable $e) {}
     }
 

@@ -16,7 +16,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-xl font-semibold text-gray-900">Bilddatenbank</h1>
-                    <p class="text-[13px] text-gray-500 mt-1">{{ number_format($totalCount) }} Bilder &middot; {{ number_format($geoCount) }} mit GPS</p>
+                    <p class="text-[13px] text-gray-500 mt-1">{{ number_format($totalCount) }} Bilder &middot; {{ number_format($geoCount) }} mit GPS &middot; {{ number_format($postedCount) }} gepostet &middot; {{ number_format($inContentCount) }} in Content</p>
                 </div>
                 <div class="flex items-center gap-1 rounded-lg border border-gray-200 p-0.5">
                     <button wire:click="$set('viewMode', 'grid')"
@@ -42,7 +42,7 @@
                 </div>
 
                 {{-- Tag Filter --}}
-                <div class="min-w-[160px]">
+                <div class="min-w-[140px]">
                     <label class="block text-[11px] text-gray-400 uppercase tracking-wider mb-1">Tag</label>
                     <select wire:model.live="filterTag"
                         class="w-full rounded-lg border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
@@ -50,6 +50,19 @@
                         @foreach($allTags as $tag)
                             <option value="{{ $tag }}">{{ $tag }}</option>
                         @endforeach
+                    </select>
+                </div>
+
+                {{-- Usage Filter --}}
+                <div class="min-w-[140px]">
+                    <label class="block text-[11px] text-gray-400 uppercase tracking-wider mb-1">Verwendung</label>
+                    <select wire:model.live="filterUsage"
+                        class="w-full rounded-lg border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                        <option value="">Alle</option>
+                        <option value="used">Verwendet</option>
+                        <option value="unused">Unverwendet</option>
+                        <option value="posted">In Posts</option>
+                        <option value="content">In Content</option>
                     </select>
                 </div>
 
@@ -124,10 +137,26 @@
                                 @endif
                                 @if($image->entities->count())
                                 <span class="inline-flex items-center justify-center px-1.5 h-6 rounded-full bg-white/80 text-[10px] font-medium text-gray-600" title="{{ $image->entities->pluck('name')->join(', ') }}">
-                                    {{ $image->entities->count() }}
+                                    @svg('heroicon-o-building-storefront', 'w-3 h-3 inline -mt-px') {{ $image->entities->count() }}
                                 </span>
                                 @endif
                             </div>
+
+                            {{-- Usage badges (bottom) --}}
+                            @if($image->channel_posts_count > 0 || $image->content_pieces_count > 0)
+                            <div class="absolute bottom-2 left-2 flex items-center gap-1">
+                                @if($image->channel_posts_count > 0)
+                                <span class="inline-flex items-center gap-0.5 px-1.5 h-5 rounded-full bg-purple-500/80 text-[10px] font-medium text-white" title="{{ $image->channel_posts_count }} Post(s)">
+                                    @svg('heroicon-o-paper-airplane', 'w-3 h-3') {{ $image->channel_posts_count }}
+                                </span>
+                                @endif
+                                @if($image->content_pieces_count > 0)
+                                <span class="inline-flex items-center gap-0.5 px-1.5 h-5 rounded-full bg-blue-500/80 text-[10px] font-medium text-white" title="{{ $image->content_pieces_count }} Content Piece(s)">
+                                    @svg('heroicon-o-document-text', 'w-3 h-3') {{ $image->content_pieces_count }}
+                                </span>
+                                @endif
+                            </div>
+                            @endif
 
                             {{-- Delete button on hover --}}
                             <button wire:click="deleteImage({{ $image->id }})" wire:confirm="Bild wirklich löschen?"

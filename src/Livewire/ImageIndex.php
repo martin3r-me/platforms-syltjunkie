@@ -15,6 +15,7 @@ class ImageIndex extends Component
 
     public string $search = '';
     public string $filterTag = '';
+    public string $filterUsage = '';
     public string $viewMode = 'grid';
     public $pendingUploads = [];
 
@@ -24,6 +25,11 @@ class ImageIndex extends Component
     }
 
     public function updatingFilterTag(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterUsage(): void
     {
         $this->resetPage();
     }
@@ -112,7 +118,8 @@ class ImageIndex extends Component
         $team = Auth::user()->currentTeam;
 
         $query = SjImage::where('team_id', $team->id)
-            ->with(['contextFile.variants', 'entities']);
+            ->with(['contextFile.variants', 'entities'])
+            ->withCount(['channelPosts', 'contentPieces']);
 
         if ($this->search) {
             $query->where(function ($q) {
@@ -124,6 +131,22 @@ class ImageIndex extends Component
 
         if ($this->filterTag) {
             $query->whereJsonContains('tags', $this->filterTag);
+        }
+
+        if ($this->filterUsage === 'posted') {
+            $query->has('channelPosts');
+        } elseif ($this->filterUsage === 'content') {
+            $query->has('contentPieces');
+        } elseif ($this->filterUsage === 'unused') {
+            $query->doesntHave('channelPosts')
+                  ->doesntHave('contentPieces')
+                  ->doesntHave('entities');
+        } elseif ($this->filterUsage === 'used') {
+            $query->where(function ($q) {
+                $q->has('channelPosts')
+                  ->orHas('contentPieces')
+                  ->orHas('entities');
+            });
         }
 
         $images = $query->orderByDesc('created_at')->paginate(24);
@@ -174,12 +197,17 @@ class ImageIndex extends Component
             ->whereNotNull('longitude')
             ->count();
 
+        $postedCount = SjImage::where('team_id', $team->id)->has('channelPosts')->count();
+        $inContentCount = SjImage::where('team_id', $team->id)->has('contentPieces')->count();
+
         return view('syltjunkie::livewire.image-index', [
             'images' => $images,
             'allTags' => $allTags,
             'totalCount' => $totalCount,
             'mapImages' => $mapImages,
             'geoCount' => $geoCount,
+            'postedCount' => $postedCount,
+            'inContentCount' => $inContentCount,
         ])->layout('platform::layouts.app');
     }
 }

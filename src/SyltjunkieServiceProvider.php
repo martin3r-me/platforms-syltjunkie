@@ -40,6 +40,10 @@ class SyltjunkieServiceProvider extends ServiceProvider
             ModuleRouter::group('syltjunkie', function () {
                 $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
             });
+
+            ModuleRouter::apiGroup('syltjunkie', function () {
+                $this->loadRoutesFrom(__DIR__.'/../routes/api.php');
+            }, requireAuth: false);
         }
 
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');

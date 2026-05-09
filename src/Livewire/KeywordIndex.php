@@ -14,6 +14,8 @@ class KeywordIndex extends Component
     public string $search = '';
     public string $filterIntent = '';
     public string $filterTopic = '';
+    public string $filterKd = '';
+    public string $filterTrend = '';
     public ?int $volumeMin = null;
     public ?int $volumeMax = null;
     public string $sortField = 'search_volume';
@@ -40,6 +42,16 @@ class KeywordIndex extends Component
     }
 
     public function updatingVolumeMax(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterKd(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterTrend(): void
     {
         $this->resetPage();
     }
@@ -82,16 +94,37 @@ class KeywordIndex extends Component
             $query->where('search_volume', '<=', $this->volumeMax);
         }
 
+        if ($this->filterKd === 'easy') {
+            $query->where('keyword_difficulty', '<=', 30);
+        } elseif ($this->filterKd === 'medium') {
+            $query->whereBetween('keyword_difficulty', [31, 60]);
+        } elseif ($this->filterKd === 'hard') {
+            $query->where('keyword_difficulty', '>', 60);
+        }
+
+        if ($this->filterTrend === 'with') {
+            $query->whereNotNull('trends_fetched_at');
+        } elseif ($this->filterTrend === 'without') {
+            $query->whereNull('trends_fetched_at');
+        } elseif ($this->filterTrend === 'high') {
+            $query->where('trends_average_interest', '>=', 50);
+        }
+
         $allowedSorts = ['keyword', 'search_volume', 'keyword_difficulty', 'cpc_cents', 'trends_average_interest', 'trends_fetched_at'];
         $sortField = in_array($this->sortField, $allowedSorts) ? $this->sortField : 'search_volume';
         $query->orderBy($sortField, $this->sortDir);
 
         $keywords = $query->paginate(50);
 
+        $baseQuery = SjKeyword::where('team_id', $team->id);
         $stats = [
-            'total' => SjKeyword::where('team_id', $team->id)->count(),
-            'with_trends' => SjKeyword::where('team_id', $team->id)->whereNotNull('trends_fetched_at')->count(),
-            'avg_volume' => (int) SjKeyword::where('team_id', $team->id)->avg('search_volume'),
+            'total' => (clone $baseQuery)->count(),
+            'with_trends' => (clone $baseQuery)->whereNotNull('trends_fetched_at')->count(),
+            'avg_volume' => (int) (clone $baseQuery)->avg('search_volume'),
+            'easy' => (clone $baseQuery)->where('keyword_difficulty', '<=', 30)->count(),
+            'medium' => (clone $baseQuery)->whereBetween('keyword_difficulty', [31, 60])->count(),
+            'hard' => (clone $baseQuery)->where('keyword_difficulty', '>', 60)->count(),
+            'high_volume' => (clone $baseQuery)->where('search_volume', '>=', 1000)->count(),
         ];
 
         $intents = SjKeyword::where('team_id', $team->id)

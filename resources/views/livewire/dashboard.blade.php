@@ -35,6 +35,29 @@
                 </div>
             </div>
 
+            {{-- Entity Map --}}
+            @if($mapEntities->count())
+            <div class="bg-white rounded-lg border border-gray-200 p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-[13px] font-semibold text-gray-700">Karte — {{ $mapEntities->count() }} Entities</h2>
+                </div>
+                <div
+                    x-data="dashboardMap()"
+                    x-init="initMap()"
+                    class="relative"
+                >
+                    <div wire:ignore id="dashboard-map" class="w-full h-96 rounded-lg border border-gray-200 z-0"
+                         :class="{ '!fixed !inset-0 !w-full !h-full !rounded-none !border-0 !z-[9999]': fullscreen }"
+                    ></div>
+                    <button
+                        @click="toggleFullscreen()"
+                        class="absolute top-2 left-2 z-[1000] bg-white border border-gray-300 rounded px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-50 shadow-sm"
+                        x-text="fullscreen ? 'Vollbild beenden' : 'Vollbild'"
+                    ></button>
+                </div>
+            </div>
+            @endif
+
             {{-- Recent Entities --}}
             @if($recentEntities->count())
             <div class="bg-white rounded-lg border border-gray-200">
@@ -107,4 +130,76 @@
     <x-slot name="sidebar">
         <livewire:syltjunkie.sidebar />
     </x-slot>
+    @if($mapEntities->count())
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('dashboardMap', () => ({
+            map: null,
+            fullscreen: false,
+
+            toggleFullscreen() {
+                this.fullscreen = !this.fullscreen;
+                this.$nextTick(() => this.map.invalidateSize());
+            },
+
+            initMap() {
+                const entities = @json($mapEntities->map(fn($e) => [
+                    'id' => $e->id,
+                    'name' => $e->name,
+                    'ort' => $e->ort,
+                    'lat' => (float) $e->latitude,
+                    'lng' => (float) $e->longitude,
+                    'type' => $e->entityType?->name,
+                    'status' => $e->status,
+                ])->values());
+
+                this.map = L.map('dashboard-map').setView([54.9079, 8.3047], 11);
+
+                const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap',
+                    maxZoom: 19,
+                });
+
+                const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: '&copy; Esri',
+                    maxZoom: 19,
+                });
+
+                const labels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 19,
+                    pane: 'overlayPane',
+                });
+
+                const satellitWithLabels = L.layerGroup([satellite, labels]);
+                osm.addTo(this.map);
+
+                L.control.layers({
+                    'Karte': osm,
+                    'Satellit': satellitWithLabels,
+                }, null, { position: 'topright' }).addTo(this.map);
+
+                const bounds = L.latLngBounds();
+
+                entities.forEach((e) => {
+                    const marker = L.marker([e.lat, e.lng]).addTo(this.map);
+                    marker.bindPopup(
+                        `<div class="text-sm">` +
+                        `<div class="font-semibold">${e.name}</div>` +
+                        `<div class="text-gray-500 text-xs">${e.type || ''} ${e.ort ? '&middot; ' + e.ort : ''}</div>` +
+                        `<a href="/syltjunkie/entities/${e.id}" class="text-blue-600 text-xs hover:underline mt-1 block">Details &rarr;</a>` +
+                        `</div>`
+                    );
+                    bounds.extend([e.lat, e.lng]);
+                });
+
+                if (entities.length > 0) {
+                    this.map.fitBounds(bounds.pad(0.15));
+                }
+            },
+        }));
+    });
+    </script>
+    @endif
 </x-ui-page>

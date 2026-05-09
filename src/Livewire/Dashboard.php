@@ -33,12 +33,21 @@ class Dashboard extends Component
             ->limit(10)
             ->get();
 
+        $mapEntities = SjEntity::where('team_id', $team->id)
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->where('is_active', true)
+            ->select('id', 'name', 'ort', 'latitude', 'longitude', 'status', 'entity_type_id')
+            ->with('entityType:id,name')
+            ->get();
+
         return view('syltjunkie::livewire.dashboard', [
             'entityCount' => $entityCount,
             'typeCount' => $typeCount,
             'groupCount' => $groupCount,
             'recentEntities' => $recentEntities,
             'trendSignals' => $trendSignals,
+            'mapEntities' => $mapEntities,
         ])->layout('platform::layouts.app');
     }
 }

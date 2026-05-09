@@ -446,8 +446,15 @@
                             x-init="initMap()"
                             class="relative"
                         >
-                            <div wire:ignore id="entity-map" class="w-full h-80 rounded-lg border border-gray-200 z-0"></div>
-                            <div class="mt-2 flex items-center gap-3 text-[11px] text-gray-400">
+                            <div wire:ignore id="entity-map" class="w-full h-80 rounded-lg border border-gray-200 z-0"
+                                 :class="{ '!fixed !inset-0 !w-full !h-full !rounded-none !border-0 !z-[9999]': fullscreen }"
+                            ></div>
+                            <button
+                                @click="toggleFullscreen()"
+                                class="absolute top-2 left-2 z-[1000] bg-white border border-gray-300 rounded px-2 py-1 text-[11px] text-gray-600 hover:bg-gray-50 shadow-sm"
+                                x-text="fullscreen ? 'Vollbild beenden' : 'Vollbild'"
+                            ></button>
+                            <div class="mt-2 flex items-center gap-3 text-[11px] text-gray-400" x-show="!fullscreen">
                                 <span>Klick = Pin setzen</span>
                                 <span>&middot;</span>
                                 <span>Toolbar = Linie/Polygon zeichnen</span>
@@ -639,6 +646,12 @@
             map: null,
             marker: null,
             drawnItems: null,
+            fullscreen: false,
+
+            toggleFullscreen() {
+                this.fullscreen = !this.fullscreen;
+                this.$nextTick(() => this.map.invalidateSize());
+            },
 
             initMap() {
                 const lat = @json($editLatitude) ?? 54.9079;

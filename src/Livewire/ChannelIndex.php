@@ -117,11 +117,11 @@ class ChannelIndex extends Component
 
         // Available Instagram accounts for the modal
         $instagramAccounts = IntegrationsInstagramAccount::whereHas('integrationConnection', function ($q) use ($team) {
-            $q->whereHas('grants', fn($g) => $g->where('team_id', $team->id));
+            $q->whereHas('shares', fn($s) => $s->where('team_id', $team->id)->orWhereNull('team_id'));
         })->get();
 
         // Available integration connections
-        $integrationConnections = IntegrationConnection::whereHas('grants', fn($q) => $q->where('team_id', $team->id))
+        $integrationConnections = IntegrationConnection::whereHas('shares', fn($q) => $q->where('team_id', $team->id)->orWhereNull('team_id'))
             ->whereHas('integration', fn($q) => $q->where('key', 'meta'))
             ->get();
 

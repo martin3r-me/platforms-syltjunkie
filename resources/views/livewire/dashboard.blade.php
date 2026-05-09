@@ -145,15 +145,7 @@
             },
 
             initMap() {
-                const entities = @json($mapEntities->map(fn($e) => [
-                    'id' => $e->id,
-                    'name' => $e->name,
-                    'ort' => $e->ort,
-                    'lat' => (float) $e->latitude,
-                    'lng' => (float) $e->longitude,
-                    'type' => $e->entityType?->name,
-                    'status' => $e->status,
-                ])->values());
+                const entities = @json($mapPoints);
 
                 this.map = L.map('dashboard-map').setView([54.9079, 8.3047], 11);
 

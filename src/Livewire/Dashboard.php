@@ -41,6 +41,18 @@ class Dashboard extends Component
             ->with('entityType:id,name')
             ->get();
 
+        $mapPoints = $mapEntities->map(function ($e) {
+            return [
+                'id' => $e->id,
+                'name' => $e->name,
+                'ort' => $e->ort,
+                'lat' => (float) $e->latitude,
+                'lng' => (float) $e->longitude,
+                'type' => $e->entityType?->name,
+                'status' => $e->status,
+            ];
+        })->values()->toArray();
+
         return view('syltjunkie::livewire.dashboard', [
             'entityCount' => $entityCount,
             'typeCount' => $typeCount,
@@ -48,6 +60,7 @@ class Dashboard extends Component
             'recentEntities' => $recentEntities,
             'trendSignals' => $trendSignals,
             'mapEntities' => $mapEntities,
+            'mapPoints' => $mapPoints,
         ])->layout('platform::layouts.app');
     }
 }

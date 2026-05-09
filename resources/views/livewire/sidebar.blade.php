@@ -22,15 +22,15 @@
 
     {{-- SEO Monitoring --}}
     <x-ui-sidebar-list label="SEO Monitoring">
-        <x-ui-sidebar-item :href="route('syltjunkie.dashboard')">
+        <x-ui-sidebar-item :href="route('syltjunkie.trend-signals.index')">
             @svg('heroicon-o-signal', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Trend Signals</span>
         </x-ui-sidebar-item>
-        <x-ui-sidebar-item :href="route('syltjunkie.entities.index')">
+        <x-ui-sidebar-item :href="route('syltjunkie.rankings.index')">
             @svg('heroicon-o-chart-bar', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Rankings</span>
         </x-ui-sidebar-item>
-        <x-ui-sidebar-item :href="route('syltjunkie.entities.index')">
+        <x-ui-sidebar-item :href="route('syltjunkie.page-changes.index')">
             @svg('heroicon-o-document-magnifying-glass', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Page Changes</span>
         </x-ui-sidebar-item>
@@ -38,11 +38,11 @@
 
     {{-- Google Business --}}
     <x-ui-sidebar-list label="Google Business">
-        <x-ui-sidebar-item :href="route('syltjunkie.entities.index')">
+        <x-ui-sidebar-item :href="route('syltjunkie.reviews.index')">
             @svg('heroicon-o-map-pin', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Bewertungen</span>
         </x-ui-sidebar-item>
-        <x-ui-sidebar-item :href="route('syltjunkie.entities.index')">
+        <x-ui-sidebar-item :href="route('syltjunkie.map.index')">
             @svg('heroicon-o-map', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Karte</span>
         </x-ui-sidebar-item>
@@ -60,11 +60,17 @@
             <a href="{{ route('syltjunkie.entity-types.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Entity Types">
                 @svg('heroicon-o-tag', 'w-5 h-5')
             </a>
-            <a href="{{ route('syltjunkie.dashboard') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Trend Signals">
+            <a href="{{ route('syltjunkie.trend-signals.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Trend Signals">
                 @svg('heroicon-o-signal', 'w-5 h-5')
             </a>
-            <a href="{{ route('syltjunkie.entities.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Bewertungen">
+            <a href="{{ route('syltjunkie.rankings.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Rankings">
+                @svg('heroicon-o-chart-bar', 'w-5 h-5')
+            </a>
+            <a href="{{ route('syltjunkie.reviews.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Bewertungen">
                 @svg('heroicon-o-map-pin', 'w-5 h-5')
+            </a>
+            <a href="{{ route('syltjunkie.map.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Karte">
+                @svg('heroicon-o-map', 'w-5 h-5')
             </a>
         </div>
     </div>

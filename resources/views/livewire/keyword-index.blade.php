@@ -100,6 +100,7 @@
                                 Fetched
                                 @if($sortField === 'trends_fetched_at') <span>{!! $sortDir === 'asc' ? '&uarr;' : '&darr;' !!}</span> @endif
                             </th>
+                            <th class="px-4 py-2"></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
@@ -177,6 +178,14 @@
                             </td>
                             <td class="px-4 py-3 text-[11px] text-gray-500">
                                 {{ $keyword->trends_fetched_at?->format('d.m.Y') ?? '&mdash;' }}
+                            </td>
+                            <td class="px-4 py-3 text-right">
+                                <a href="{{ route('syltjunkie.content.create', ['keyword_id' => $keyword->id]) }}" wire:navigate
+                                   class="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium text-blue-600 hover:bg-blue-50 transition-colors"
+                                   title="Content Brief erstellen">
+                                    @svg('heroicon-o-document-plus', 'w-3.5 h-3.5')
+                                    Brief
+                                </a>
                             </td>
                         </tr>
                         @endforeach

@@ -7,6 +7,7 @@ use Livewire\Component;
 use Platform\Syltjunkie\Models\SjEntity;
 use Platform\Syltjunkie\Models\SjEntityType;
 use Platform\Syltjunkie\Models\SjEntityTypeGroup;
+use Platform\Syltjunkie\Models\SjContentPiece;
 use Platform\Syltjunkie\Models\SjKeyword;
 use Platform\Syltjunkie\Models\SjTrendSignal;
 
@@ -48,6 +49,12 @@ class Dashboard extends Component
             'trending' => SjKeyword::where('team_id', $team->id)->where('trends_average_interest', '>=', 50)->count(),
         ];
 
+        $contentStats = [
+            'total' => SjContentPiece::where('team_id', $team->id)->count(),
+            'briefs' => SjContentPiece::where('team_id', $team->id)->where('status', 'brief')->count(),
+            'published' => SjContentPiece::where('team_id', $team->id)->where('status', 'published')->count(),
+        ];
+
         $mapPoints = $mapEntities->map(function ($e) {
             return [
                 'id' => $e->id,
@@ -70,6 +77,7 @@ class Dashboard extends Component
             'mapEntities' => $mapEntities,
             'mapPoints' => $mapPoints,
             'keywordStats' => $keywordStats,
+            'contentStats' => $contentStats,
         ])->layout('platform::layouts.app');
     }
 }

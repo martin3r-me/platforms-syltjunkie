@@ -3,6 +3,7 @@
 namespace Platform\Syltjunkie\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -21,6 +22,11 @@ class SjContentPiece extends Model
         'content_type',
         'status',
         'brief_notes',
+        'body_markdown',
+        'excerpt',
+        'cover_image_id',
+        'seo_title',
+        'seo_description',
         'published_url',
         'published_at',
         'target_traffic_estimate',
@@ -74,8 +80,33 @@ class SjContentPiece extends Model
         return $this->hasMany(SjChannelPost::class, 'content_piece_id');
     }
 
+    public function coverImage(): BelongsTo
+    {
+        return $this->belongsTo(SjImage::class, 'cover_image_id');
+    }
+
+    public function images(): BelongsToMany
+    {
+        return $this->belongsToMany(SjImage::class, 'sj_content_images', 'content_piece_id', 'image_id')
+            ->withPivot(['sort_order', 'role'])
+            ->withTimestamps()
+            ->orderByPivot('sort_order');
+    }
+
     public function getTargetValueEuroAttribute(): ?float
     {
         return $this->target_value_cents !== null ? $this->target_value_cents / 100 : null;
+    }
+
+    public function getStatusColorAttribute(): string
+    {
+        return match ($this->status) {
+            'brief' => 'gray',
+            'draft' => 'yellow',
+            'review' => 'orange',
+            'published' => 'green',
+            'archived' => 'slate',
+            default => 'gray',
+        };
     }
 }

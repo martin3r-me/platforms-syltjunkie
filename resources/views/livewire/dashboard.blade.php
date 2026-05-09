@@ -56,6 +56,27 @@
             </div>
             @endif
 
+            {{-- Content Stats --}}
+            @if($contentStats['total'] > 0)
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-white rounded-lg border border-gray-200 p-4">
+                    <div class="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1">Content</div>
+                    <div class="text-2xl font-bold text-gray-900 tabular-nums">{{ $contentStats['total'] }}</div>
+                    <div class="text-[11px] text-gray-400 mt-1">Content Pieces gesamt</div>
+                </div>
+                <div class="bg-white rounded-lg border border-gray-200 p-4">
+                    <div class="text-[11px] font-medium text-yellow-500 uppercase tracking-wide mb-1">Briefs</div>
+                    <div class="text-2xl font-bold text-gray-900 tabular-nums">{{ $contentStats['briefs'] }}</div>
+                    <div class="text-[11px] text-gray-400 mt-1">Offene Briefs</div>
+                </div>
+                <div class="bg-white rounded-lg border border-gray-200 p-4">
+                    <div class="text-[11px] font-medium text-green-500 uppercase tracking-wide mb-1">Published</div>
+                    <div class="text-2xl font-bold text-gray-900 tabular-nums">{{ $contentStats['published'] }}</div>
+                    <div class="text-[11px] text-gray-400 mt-1">Ver&ouml;ffentlicht</div>
+                </div>
+            </div>
+            @endif
+
             {{-- Entity Map --}}
             @if($mapEntities->count())
             <div class="bg-white rounded-lg border border-gray-200 p-4">

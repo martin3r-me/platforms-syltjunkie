@@ -438,6 +438,53 @@
                         @endif
                     </div>
 
+                    {{-- Posts --}}
+                    <div class="bg-white rounded-lg border border-gray-200 p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-[13px] font-semibold text-gray-700">Posts</h2>
+                            <a href="{{ route('syltjunkie.posts.create', ['entity_id' => $entity->id]) }}" wire:navigate
+                                class="rounded-lg bg-blue-600 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-blue-700">
+                                Post erstellen
+                            </a>
+                        </div>
+
+                        @if($entityPosts->count())
+                        <div class="space-y-2">
+                            @foreach($entityPosts as $post)
+                            <div class="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 text-[12px]">
+                                <div class="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden bg-gray-100">
+                                    @if($post->images->first())
+                                        <img src="{{ $post->images->first()->thumbnail_url }}" alt="" class="w-full h-full object-cover" />
+                                    @else
+                                        <div class="w-full h-full flex items-center justify-center">
+                                            @svg('heroicon-o-photo', 'w-4 h-4 text-gray-300')
+                                        </div>
+                                    @endif
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium
+                                            {{ match($post->status) {
+                                                'published' => 'bg-green-50 text-green-700',
+                                                'failed' => 'bg-red-50 text-red-700',
+                                                'scheduled' => 'bg-yellow-50 text-yellow-700',
+                                                default => 'bg-gray-100 text-gray-600',
+                                            } }}">
+                                            {{ $post->status }}
+                                        </span>
+                                        <span class="text-gray-400">{{ $post->channel?->name }}</span>
+                                        <span class="text-gray-400">{{ $post->created_at->format('d.m.Y') }}</span>
+                                    </div>
+                                    <div class="text-gray-700 truncate mt-0.5">{{ $post->caption }}</div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                        @else
+                        <div class="text-[12px] text-gray-400">Noch keine Posts für diese Entity.</div>
+                        @endif
+                    </div>
+
                     {{-- Bilder --}}
                     <div class="bg-white rounded-lg border border-gray-200 p-4">
                         <h2 class="text-[13px] font-semibold text-gray-700 mb-3">Bilder</h2>

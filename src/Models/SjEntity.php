@@ -134,4 +134,9 @@ class SjEntity extends Model
     {
         return $this->images()->wherePivot('is_primary', true);
     }
+
+    public function channelPosts(): HasMany
+    {
+        return $this->hasMany(SjChannelPost::class, 'entity_id');
+    }
 }

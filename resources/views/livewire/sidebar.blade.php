@@ -56,6 +56,18 @@
         </x-ui-sidebar-item>
     </x-ui-sidebar-list>
 
+    {{-- Publishing --}}
+    <x-ui-sidebar-list label="Publishing">
+        <x-ui-sidebar-item :href="route('syltjunkie.channels.index')">
+            @svg('heroicon-o-signal', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Channels</span>
+        </x-ui-sidebar-item>
+        <x-ui-sidebar-item :href="route('syltjunkie.posts.index')">
+            @svg('heroicon-o-paper-airplane', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Posts</span>
+        </x-ui-sidebar-item>
+    </x-ui-sidebar-list>
+
     {{-- Collapsed: Icons-only --}}
     <div x-show="collapsed" class="px-2 py-2 border-b border-[var(--ui-border)]">
         <div class="flex flex-col gap-2">
@@ -82,6 +94,12 @@
             </a>
             <a href="{{ route('syltjunkie.images.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Bilddatenbank">
                 @svg('heroicon-o-photo', 'w-5 h-5')
+            </a>
+            <a href="{{ route('syltjunkie.channels.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Channels">
+                @svg('heroicon-o-signal', 'w-5 h-5')
+            </a>
+            <a href="{{ route('syltjunkie.posts.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Posts">
+                @svg('heroicon-o-paper-airplane', 'w-5 h-5')
             </a>
         </div>
     </div>

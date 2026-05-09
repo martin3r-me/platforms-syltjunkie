@@ -10,6 +10,7 @@ use Platform\Syltjunkie\Models\SjEntity;
 use Platform\Syltjunkie\Models\SjImage;
 use Platform\Syltjunkie\Models\SjKeywordRanking;
 use Platform\Syltjunkie\Models\SjPageChange;
+use Platform\Syltjunkie\Models\SjChannelPost;
 use Platform\Syltjunkie\Models\SjTrendSignal;
 
 class EntityDetail extends Component
@@ -154,12 +155,19 @@ class EntityDetail extends Component
             ->with('contextFile.variants')
             ->get();
 
+        $entityPosts = SjChannelPost::where('entity_id', $this->entity->id)
+            ->with(['channel', 'images.contextFile.variants'])
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+
         return view('syltjunkie::livewire.entity-detail', [
             'entity' => $this->entity,
             'keywordRankings' => $keywordRankings,
             'recentChanges' => $recentChanges,
             'entitySignals' => $entitySignals,
             'entityImages' => $entityImages,
+            'entityPosts' => $entityPosts,
         ])->layout('platform::layouts.app');
     }
 }

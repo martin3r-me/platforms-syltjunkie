@@ -10,6 +10,9 @@ use Platform\Syltjunkie\Livewire\PageChangeIndex;
 use Platform\Syltjunkie\Livewire\ReviewIndex;
 use Platform\Syltjunkie\Livewire\MapIndex;
 use Platform\Syltjunkie\Livewire\ImageIndex;
+use Platform\Syltjunkie\Livewire\ChannelIndex;
+use Platform\Syltjunkie\Livewire\ChannelPostIndex;
+use Platform\Syltjunkie\Livewire\ChannelPostComposer;
 
 Route::get('/', Dashboard::class)->name('syltjunkie.dashboard');
 Route::get('/entities', EntityIndex::class)->name('syltjunkie.entities.index');
@@ -21,3 +24,6 @@ Route::get('/page-changes', PageChangeIndex::class)->name('syltjunkie.page-chang
 Route::get('/reviews', ReviewIndex::class)->name('syltjunkie.reviews.index');
 Route::get('/map', MapIndex::class)->name('syltjunkie.map.index');
 Route::get('/images', ImageIndex::class)->name('syltjunkie.images.index');
+Route::get('/channels', ChannelIndex::class)->name('syltjunkie.channels.index');
+Route::get('/posts', ChannelPostIndex::class)->name('syltjunkie.posts.index');
+Route::get('/posts/create', ChannelPostComposer::class)->name('syltjunkie.posts.create');

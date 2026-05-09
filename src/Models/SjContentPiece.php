@@ -69,6 +69,11 @@ class SjContentPiece extends Model
         return $this->keywords()->wherePivot('is_primary', true);
     }
 
+    public function channelPosts(): HasMany
+    {
+        return $this->hasMany(SjChannelPost::class, 'content_piece_id');
+    }
+
     public function getTargetValueEuroAttribute(): ?float
     {
         return $this->target_value_cents !== null ? $this->target_value_cents / 100 : null;

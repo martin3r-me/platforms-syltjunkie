@@ -83,6 +83,13 @@ class SjImage extends Model
         return $this->contextFile?->url ?? '';
     }
 
+    public function channelPosts(): BelongsToMany
+    {
+        return $this->belongsToMany(SjChannelPost::class, 'sj_channel_post_images', 'sj_image_id', 'channel_post_id')
+            ->withPivot(['sort_order', 'role'])
+            ->withTimestamps();
+    }
+
     public function getThumbnailUrlAttribute(): string
     {
         $thumbnail = $this->contextFile?->thumbnail;

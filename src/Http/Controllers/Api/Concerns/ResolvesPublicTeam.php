@@ -40,6 +40,16 @@ trait ResolvesPublicTeam
             return $this->resolvedTeamId;
         }
 
+        // Authenticated user: use their current team
+        $user = $request->user();
+        if ($user) {
+            $userTeam = $user->currentTeam ?? $user->teams()->first();
+            if ($userTeam) {
+                $this->resolvedTeamId = $userTeam->id;
+                return $this->resolvedTeamId;
+            }
+        }
+
         // Fallback: first team that has the syltjunkie module enabled
         $module = Module::where('key', 'syltjunkie')->first();
 

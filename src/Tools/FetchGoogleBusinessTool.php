@@ -6,6 +6,7 @@ use Platform\Core\Contracts\ToolContract;
 use Platform\Core\Contracts\ToolContext;
 use Platform\Core\Contracts\ToolMetadataContract;
 use Platform\Core\Contracts\ToolResult;
+use Platform\Integrations\DTOs\DataForSeo\GoogleBusinessInfoResult;
 use Platform\Integrations\Services\DataForSeoApiService;
 use Platform\Syltjunkie\Models\SjEntity;
 use Platform\Syltjunkie\Models\SjEntityUrl;
@@ -51,6 +52,10 @@ class FetchGoogleBusinessTool implements ToolContract, ToolMetadataContract
                     'description' => 'Optional: Nur anzeigen was passieren würde. Default: false.',
                     'default' => false,
                 ],
+                'search_keyword' => [
+                    'type' => 'string',
+                    'description' => 'Optional: Eigenes Keyword statt Auto-Generierung. Z.B. "Restaurant Sansibar Sylt".',
+                ],
             ],
         ];
     }
@@ -70,12 +75,16 @@ class FetchGoogleBusinessTool implements ToolContract, ToolMetadataContract
 
             $maxEntities = min((int) ($arguments['max_entities'] ?? 10), 50);
             $dryRun = (bool) ($arguments['dry_run'] ?? false);
+            $searchKeyword = $arguments['search_keyword'] ?? null;
 
             // Entities laden
             $q = SjEntity::query()
                 ->where('team_id', $rootTeamId)
                 ->where('is_active', true)
-                ->with(['entityUrls' => fn($q) => $q->where('is_active', true)]);
+                ->with([
+                    'entityUrls' => fn($q) => $q->where('is_active', true),
+                    'entityType:id,name,code',
+                ]);
 
             if (!empty($arguments['entity_id'])) {
                 $q->where('id', (int) $arguments['entity_id']);
@@ -105,22 +114,40 @@ class FetchGoogleBusinessTool implements ToolContract, ToolMetadataContract
                     $googleMapsUrl = $entity->entityUrls->firstWhere('platform', 'google_maps');
                     $placeId = $googleMapsUrl?->google_place_id;
 
-                    // Keyword bauen
+                    // Keyword bauen & iterativ durchprobieren
+                    $best = null;
+                    $keyword = null;
+
                     if ($placeId) {
+                        // Place-ID hat höchste Prio — ein Call reicht
                         $keyword = "place_id:{$placeId}";
+                        $businessResults = $api->getGoogleBusinessInfo($context->user, $keyword, $locationCode);
+                        $apiCallsMade++;
+
+                        if (!empty($businessResults)) {
+                            $best = $this->findBestResult($businessResults, $placeId, $entity);
+                        }
                     } else {
-                        $ortName = $entity->ortEntity()?->name;
-                        $keyword = trim("{$entity->name} {$ortName}");
+                        // Keyword-Varianten durchprobieren
+                        $variants = $searchKeyword
+                            ? [$searchKeyword]
+                            : $this->buildKeywordVariants($entity);
+
+                        foreach ($variants as $variant) {
+                            $keyword = $variant;
+                            $businessResults = $api->getGoogleBusinessInfo($context->user, $keyword, $locationCode);
+                            $apiCallsMade++;
+
+                            if (!empty($businessResults)) {
+                                $best = $this->findBestResult($businessResults, null, $entity);
+                                if ($best) {
+                                    break;
+                                }
+                            }
+                        }
                     }
 
-                    $businessResults = $api->getGoogleBusinessInfo(
-                        $context->user,
-                        $keyword,
-                        $locationCode,
-                    );
-                    $apiCallsMade++;
-
-                    if (empty($businessResults)) {
+                    if (!$best) {
                         $results[] = [
                             'entity_id' => $entity->id,
                             'entity_name' => $entity->name,
@@ -129,9 +156,6 @@ class FetchGoogleBusinessTool implements ToolContract, ToolMetadataContract
                         ];
                         continue;
                     }
-
-                    // Bestes Ergebnis: per place_id matchen oder erstes nehmen
-                    $best = $this->findBestResult($businessResults, $placeId);
 
                     // EntityUrl anlegen/updaten
                     $googleMapsUrl = $this->upsertGoogleMapsUrl(
@@ -198,34 +222,45 @@ class FetchGoogleBusinessTool implements ToolContract, ToolMetadataContract
     protected function buildDryRunResult($entities): ToolResult
     {
         $planned = [];
+        $totalMaxCalls = 0;
+
         foreach ($entities as $entity) {
             $googleMapsUrl = $entity->entityUrls->firstWhere('platform', 'google_maps');
             $placeId = $googleMapsUrl?->google_place_id;
 
+            if ($placeId) {
+                $keywords = ["place_id:{$placeId}"];
+            } else {
+                $keywords = $this->buildKeywordVariants($entity);
+            }
+
+            $totalMaxCalls += count($keywords);
+
             $planned[] = [
                 'entity_id' => $entity->id,
                 'entity_name' => $entity->name,
-                'keyword' => $placeId
-                    ? "place_id:{$placeId}"
-                    : trim("{$entity->name} " . ($entity->ortEntity()?->name ?? '')),
+                'keyword_variants' => $keywords,
                 'has_google_maps_url' => $googleMapsUrl !== null,
                 'has_place_id' => $placeId !== null,
+                'has_coordinates' => $entity->latitude && $entity->longitude,
             ];
         }
 
         return ToolResult::success([
             'dry_run' => true,
             'total_entities' => count($planned),
-            'estimated_cost_cents' => count($planned) * 2,
+            'max_api_calls' => $totalMaxCalls,
+            'estimated_max_cost_cents' => $totalMaxCalls * 2,
             'entities' => $planned,
         ]);
     }
 
     /**
-     * @param \Platform\Integrations\DTOs\DataForSeo\GoogleBusinessInfoResult[] $results
+     * @param GoogleBusinessInfoResult[] $results
      */
-    protected function findBestResult(array $results, ?string $knownPlaceId): \Platform\Integrations\DTOs\DataForSeo\GoogleBusinessInfoResult
+    protected function findBestResult(array $results, ?string $knownPlaceId, ?SjEntity $entity = null): ?GoogleBusinessInfoResult
     {
+        // 1. Place-ID Match (höchste Prio)
         if ($knownPlaceId) {
             foreach ($results as $result) {
                 if ($result->placeId === $knownPlaceId) {
@@ -234,14 +269,90 @@ class FetchGoogleBusinessTool implements ToolContract, ToolMetadataContract
             }
         }
 
+        // 2. Geo-Match: nächstes Ergebnis innerhalb 2km
+        if ($entity?->latitude && $entity?->longitude) {
+            $closest = null;
+            $closestDist = PHP_FLOAT_MAX;
+
+            foreach ($results as $r) {
+                if (!$r->latitude || !$r->longitude) {
+                    continue;
+                }
+                $dist = $this->haversineKm((float) $entity->latitude, (float) $entity->longitude, $r->latitude, $r->longitude);
+                if ($dist < 2.0 && $dist < $closestDist) {
+                    $closest = $r;
+                    $closestDist = $dist;
+                }
+            }
+
+            if ($closest) {
+                return $closest;
+            }
+
+            return null;
+        }
+
+        // 3. Fallback: erstes Ergebnis (nur wenn keine Geo-Validierung möglich)
         return $results[0];
+    }
+
+    protected function buildKeywordVariants(SjEntity $entity): array
+    {
+        $name = $entity->name;
+        $ortName = $entity->ortEntity()?->name;
+        $entityTypeName = $entity->entityType?->name;
+
+        // Nur sinnvolle Entity-Types als Prefix verwenden
+        $usefulTypes = ['Restaurant', 'Café', 'Cafe', 'Hotel', 'Bar', 'Bistro', 'Pension', 'Ferienwohnung', 'Imbiss', 'Bäckerei', 'Boutique', 'Galerie', 'Spa', 'Wellness'];
+        $useType = $entityTypeName && in_array($entityTypeName, $usefulTypes, true);
+
+        $variants = [];
+
+        // 1. "$name $ort"
+        if ($ortName) {
+            $variants[] = trim("{$name} {$ortName}");
+        }
+
+        // 2. "$entityType $name $ort"
+        if ($useType && $ortName) {
+            $variants[] = trim("{$entityTypeName} {$name} {$ortName}");
+        }
+
+        // 3. "$name Sylt"
+        if ($ortName !== 'Sylt') {
+            $variants[] = trim("{$name} Sylt");
+        }
+
+        // 4. "$entityType $name Sylt"
+        if ($useType && $ortName !== 'Sylt') {
+            $variants[] = trim("{$entityTypeName} {$name} Sylt");
+        }
+
+        // 5. "$name" allein (nur wenn Geo-Koordinaten vorhanden)
+        if ($entity->latitude && $entity->longitude) {
+            $variants[] = $name;
+        }
+
+        // Deduplizieren (Reihenfolge beibehalten)
+        return array_values(array_unique($variants));
+    }
+
+    private function haversineKm(float $lat1, float $lon1, float $lat2, float $lon2): float
+    {
+        $r = 6371.0;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+        $a = sin($dLat / 2) ** 2
+            + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) ** 2;
+
+        return $r * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 
     protected function upsertGoogleMapsUrl(
         int $teamId,
         SjEntity $entity,
         ?SjEntityUrl $existingUrl,
-        \Platform\Integrations\DTOs\DataForSeo\GoogleBusinessInfoResult $result,
+        GoogleBusinessInfoResult $result,
     ): SjEntityUrl {
         if ($existingUrl) {
             // Update place_id if we didn't have one

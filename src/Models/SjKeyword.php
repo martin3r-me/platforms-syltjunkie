@@ -73,4 +73,48 @@ class SjKeyword extends Model
     {
         return $this->cpc_cents !== null ? $this->cpc_cents / 100 : null;
     }
+
+    /**
+     * Median des monatlichen Suchvolumens.
+     */
+    public function getMedianVolumeAttribute(): ?int
+    {
+        $mv = $this->monthly_volumes;
+        if (!is_array($mv) || count($mv) < 2) {
+            return $this->search_volume;
+        }
+
+        $values = array_values($mv);
+        sort($values);
+        $count = count($values);
+        $mid = intdiv($count, 2);
+
+        return $count % 2 === 0
+            ? (int) round(($values[$mid - 1] + $values[$mid]) / 2)
+            : $values[$mid];
+    }
+
+    /**
+     * Niedrigstes monatliches Suchvolumen.
+     */
+    public function getMinVolumeAttribute(): ?int
+    {
+        $mv = $this->monthly_volumes;
+        if (!is_array($mv) || empty($mv)) {
+            return null;
+        }
+        return (int) min($mv);
+    }
+
+    /**
+     * Höchstes monatliches Suchvolumen.
+     */
+    public function getMaxVolumeAttribute(): ?int
+    {
+        $mv = $this->monthly_volumes;
+        if (!is_array($mv) || empty($mv)) {
+            return null;
+        }
+        return (int) max($mv);
+    }
 }

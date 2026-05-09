@@ -170,7 +170,7 @@
                                     <tr class="text-left text-[10px] text-gray-400 uppercase tracking-wider border-b border-gray-100">
                                         <th class="pb-2 pr-3">Pos.</th>
                                         <th class="pb-2 pr-3">Keyword</th>
-                                        <th class="pb-2 pr-3 text-right">Vol.</th>
+                                        <th class="pb-2 pr-3 text-right" title="Median monatl. Suchvolumen (Min–Max)">Vol.</th>
                                         <th class="pb-2 pr-2 text-center">Saison</th>
                                         <th class="pb-2 pr-3 text-right">CPC</th>
                                         <th class="pb-2 text-right">KD</th>
@@ -192,7 +192,10 @@
                                         </td>
                                         <td class="py-1.5 pr-3 text-gray-900">{{ $ranking->keyword?->keyword }}</td>
                                         <td class="py-1.5 pr-3 text-right text-gray-500">
-                                            @if($ranking->keyword?->search_volume)
+                                            @if($ranking->keyword?->monthly_volumes && count($ranking->keyword->monthly_volumes) >= 6)
+                                                <div class="text-gray-900 font-medium">{{ number_format($ranking->keyword->median_volume) }}</div>
+                                                <div class="text-[9px] text-gray-400">{{ number_format($ranking->keyword->min_volume) }}–{{ number_format($ranking->keyword->max_volume) }}</div>
+                                            @elseif($ranking->keyword?->search_volume)
                                                 {{ number_format($ranking->keyword->search_volume) }}
                                             @else
                                                 <span class="text-gray-300">&mdash;</span>

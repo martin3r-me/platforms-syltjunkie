@@ -90,6 +90,9 @@ class SyltjunkieServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Syltjunkie\Tools\FetchPageSnapshotsTool());
             $registry->register(new \Platform\Syltjunkie\Tools\ListPageSnapshotsTool());
             $registry->register(new \Platform\Syltjunkie\Tools\ListPageChangesTool());
+
+            // Google Business Profile
+            $registry->register(new \Platform\Syltjunkie\Tools\FetchGoogleBusinessTool());
         } catch (\Throwable $e) {}
     }
 

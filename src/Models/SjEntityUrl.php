@@ -22,6 +22,7 @@ class SjEntityUrl extends Model
         'platform',
         'is_primary',
         'is_active',
+        'google_place_id',
         'last_checked_at',
     ];
 

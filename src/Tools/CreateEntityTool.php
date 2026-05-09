@@ -7,6 +7,7 @@ use Platform\Core\Contracts\ToolContext;
 use Platform\Core\Contracts\ToolMetadataContract;
 use Platform\Core\Contracts\ToolResult;
 use Platform\Syltjunkie\Models\SjEntity;
+use Platform\Syltjunkie\Models\SjEntityRelationship;
 use Platform\Syltjunkie\Tools\Concerns\ResolvesSyltjunkieTeam;
 
 class CreateEntityTool implements ToolContract, ToolMetadataContract
@@ -50,7 +51,7 @@ class CreateEntityTool implements ToolContract, ToolMetadataContract
                 ],
                 'ort' => [
                     'type' => 'string',
-                    'description' => 'Optional: Ortschaft auf Sylt (z.B. "Westerland", "Kampen", "Rantum", "List", "Hörnum", "Wenningstedt", "Keitum", "Tinnum", "Archsum", "Morsum").',
+                    'description' => 'Optional: Ortschaft auf Sylt (z.B. "Westerland", "Kampen", "Rantum", "List", "Hörnum", "Wenningstedt", "Keitum", "Tinnum", "Archsum", "Morsum"). Erstellt automatisch eine lokalisiert_in-Beziehung zur Ort-Entity.',
                 ],
                 'latitude' => [
                     'type' => 'number',
@@ -110,7 +111,6 @@ class CreateEntityTool implements ToolContract, ToolMetadataContract
                 'name' => $name,
                 'slug' => !empty($arguments['slug']) ? $arguments['slug'] : null,
                 'description' => ($arguments['description'] ?? null) ?: null,
-                'ort' => ($arguments['ort'] ?? null) ?: null,
                 'latitude' => $arguments['latitude'] ?? null,
                 'longitude' => $arguments['longitude'] ?? null,
                 'season' => $arguments['season'] ?? 'year_round',
@@ -120,13 +120,33 @@ class CreateEntityTool implements ToolContract, ToolMetadataContract
                 'is_active' => true,
             ]);
 
+            // Create lokalisiert_in relationship if ort is provided
+            $ortName = null;
+            if (!empty($arguments['ort'])) {
+                $ortEntity = SjEntity::where('team_id', $rootTeamId)
+                    ->whereHas('entityType', fn($q) => $q->where('code', 'ort'))
+                    ->where('name', $arguments['ort'])
+                    ->first();
+
+                if ($ortEntity) {
+                    SjEntityRelationship::create([
+                        'team_id' => $rootTeamId,
+                        'source_entity_id' => $entity->id,
+                        'target_entity_id' => $ortEntity->id,
+                        'relation_type_id' => 1, // lokalisiert_in
+                        'is_active' => true,
+                    ]);
+                    $ortName = $ortEntity->name;
+                }
+            }
+
             return ToolResult::success([
                 'id' => $entity->id,
                 'uuid' => $entity->uuid,
                 'name' => $entity->name,
                 'slug' => $entity->slug,
                 'entity_type_id' => $entity->entity_type_id,
-                'ort' => $entity->ort,
+                'ort' => $ortName,
                 'status' => $entity->status,
                 'message' => 'Entity erfolgreich erstellt.',
             ]);

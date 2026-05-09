@@ -46,13 +46,19 @@ class EntityIndex extends Component
                 'entityUrls' => fn($q) => $q->where('is_active', true)->where('platform', 'website'),
                 'entityUrls.latestSnapshot',
                 'entityUrls.latestPageSnapshot',
+                'outgoingRelationships' => fn($q) => $q->where('relation_type_id', 1)->where('is_active', true),
+                'outgoingRelationships.targetEntity:id,name,slug',
             ]);
 
         if ($this->search) {
             $query->where(function ($q) {
                 $q->where('name', 'like', "%{$this->search}%")
-                  ->orWhere('ort', 'like', "%{$this->search}%")
-                  ->orWhere('slug', 'like', "%{$this->search}%");
+                  ->orWhere('slug', 'like', "%{$this->search}%")
+                  ->orWhereHas('outgoingRelationships', fn ($rq) => $rq
+                      ->where('relation_type_id', 1)
+                      ->where('is_active', true)
+                      ->whereHas('targetEntity', fn ($tq) => $tq->where('name', 'like', "%{$this->search}%"))
+                  );
             });
         }
 
@@ -71,7 +77,7 @@ class EntityIndex extends Component
         }
 
         // Sortierung
-        if (in_array($this->sortField, ['name', 'ort', 'status'])) {
+        if (in_array($this->sortField, ['name', 'status'])) {
             $query->orderBy($this->sortField, $this->sortDir);
         } else {
             // Für berechnete Felder: Standard-Sortierung, Post-Sort im View

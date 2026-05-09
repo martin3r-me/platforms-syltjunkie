@@ -23,7 +23,11 @@ class Dashboard extends Component
         $groupCount = SjEntityTypeGroup::where('team_id', $team->id)->count();
 
         $recentEntities = SjEntity::where('team_id', $team->id)
-            ->with('entityType.group')
+            ->with([
+                'entityType.group',
+                'outgoingRelationships' => fn($q) => $q->where('relation_type_id', 1)->where('is_active', true),
+                'outgoingRelationships.targetEntity:id,name,slug',
+            ])
             ->orderByDesc('created_at')
             ->limit(10)
             ->get();
@@ -39,8 +43,11 @@ class Dashboard extends Component
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->where('is_active', true)
-            ->select('id', 'name', 'ort', 'latitude', 'longitude', 'status', 'entity_type_id')
-            ->with('entityType:id,name,color')
+            ->with([
+                'entityType:id,name,color',
+                'outgoingRelationships' => fn($q) => $q->where('relation_type_id', 1)->where('is_active', true),
+                'outgoingRelationships.targetEntity:id,name,slug',
+            ])
             ->get();
 
         $keywordStats = [
@@ -59,7 +66,7 @@ class Dashboard extends Component
             return [
                 'id' => $e->id,
                 'name' => $e->name,
-                'ort' => $e->ort,
+                'ort' => $e->outgoingRelationships->first()?->targetEntity?->name,
                 'lat' => (float) $e->latitude,
                 'lng' => (float) $e->longitude,
                 'type' => $e->entityType?->name,

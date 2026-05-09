@@ -7,6 +7,7 @@ use Platform\Core\Contracts\ToolContext;
 use Platform\Core\Contracts\ToolMetadataContract;
 use Platform\Core\Contracts\ToolResult;
 use Platform\Syltjunkie\Models\SjEntity;
+use Platform\Syltjunkie\Models\SjEntityRelationship;
 use Platform\Syltjunkie\Tools\Concerns\ResolvesSyltjunkieTeam;
 
 class UpdateEntityTool implements ToolContract, ToolMetadataContract
@@ -39,7 +40,7 @@ class UpdateEntityTool implements ToolContract, ToolMetadataContract
                 'name' => ['type' => 'string', 'description' => 'Optional: Neuer Name.'],
                 'slug' => ['type' => 'string', 'description' => 'Optional: Neuer Slug.'],
                 'description' => ['type' => 'string', 'description' => 'Optional: Neue Beschreibung.'],
-                'ort' => ['type' => 'string', 'description' => 'Optional: Neuer Ort.'],
+                'ort' => ['type' => 'string', 'description' => 'Optional: Neuer Ort (aktualisiert die lokalisiert_in-Beziehung).'],
                 'latitude' => ['type' => 'number', 'description' => 'Optional: Breitengrad.'],
                 'longitude' => ['type' => 'number', 'description' => 'Optional: Längengrad.'],
                 'season' => ['type' => 'string', 'enum' => ['year_round', 'sommer', 'winter', 'event']],
@@ -67,7 +68,7 @@ class UpdateEntityTool implements ToolContract, ToolMetadataContract
                 return ToolResult::error('NOT_FOUND', 'Entity nicht gefunden.');
             }
 
-            $updatable = ['name', 'slug', 'description', 'ort', 'latitude', 'longitude', 'geometry', 'season', 'status', 'source', 'is_active'];
+            $updatable = ['name', 'slug', 'description', 'latitude', 'longitude', 'geometry', 'season', 'status', 'source', 'is_active'];
             foreach ($updatable as $field) {
                 if (array_key_exists($field, $arguments)) {
                     $entity->{$field} = $arguments[$field];
@@ -78,6 +79,31 @@ class UpdateEntityTool implements ToolContract, ToolMetadataContract
             }
 
             $entity->save();
+
+            // Update lokalisiert_in relationship if ort is provided
+            if (array_key_exists('ort', $arguments)) {
+                // Remove existing lokalisiert_in relationships
+                SjEntityRelationship::where('source_entity_id', $entity->id)
+                    ->where('relation_type_id', 1)
+                    ->delete();
+
+                if (!empty($arguments['ort'])) {
+                    $ortEntity = SjEntity::where('team_id', $rootTeamId)
+                        ->whereHas('entityType', fn($q) => $q->where('code', 'ort'))
+                        ->where('name', $arguments['ort'])
+                        ->first();
+
+                    if ($ortEntity) {
+                        SjEntityRelationship::create([
+                            'team_id' => $rootTeamId,
+                            'source_entity_id' => $entity->id,
+                            'target_entity_id' => $ortEntity->id,
+                            'relation_type_id' => 1,
+                            'is_active' => true,
+                        ]);
+                    }
+                }
+            }
 
             return ToolResult::success([
                 'id' => $entity->id,

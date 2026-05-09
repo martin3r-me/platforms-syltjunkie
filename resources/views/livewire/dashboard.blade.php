@@ -116,7 +116,7 @@
                             </div>
                             <div>
                                 <div class="text-[13px] font-medium text-gray-900">{{ $entity->name }}</div>
-                                <div class="text-[11px] text-gray-400">{{ $entity->entityType?->name }} &middot; {{ $entity->ort }}</div>
+                                <div class="text-[11px] text-gray-400">{{ $entity->entityType?->name }}@if($entity->outgoingRelationships->first()?->targetEntity?->name) &middot; {{ $entity->outgoingRelationships->first()->targetEntity->name }}@endif</div>
                             </div>
                         </div>
                         <div class="text-[11px] text-gray-400">

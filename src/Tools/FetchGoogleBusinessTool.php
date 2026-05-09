@@ -109,7 +109,8 @@ class FetchGoogleBusinessTool implements ToolContract, ToolMetadataContract
                     if ($placeId) {
                         $keyword = "place_id:{$placeId}";
                     } else {
-                        $keyword = trim("{$entity->name} {$entity->ort}");
+                        $ortName = $entity->ortEntity()?->name;
+                        $keyword = trim("{$entity->name} {$ortName}");
                     }
 
                     $businessResults = $api->getGoogleBusinessInfo(
@@ -206,7 +207,7 @@ class FetchGoogleBusinessTool implements ToolContract, ToolMetadataContract
                 'entity_name' => $entity->name,
                 'keyword' => $placeId
                     ? "place_id:{$placeId}"
-                    : trim("{$entity->name} {$entity->ort}"),
+                    : trim("{$entity->name} " . ($entity->ortEntity()?->name ?? '')),
                 'has_google_maps_url' => $googleMapsUrl !== null,
                 'has_place_id' => $placeId !== null,
             ];

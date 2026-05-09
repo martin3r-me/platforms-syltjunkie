@@ -85,8 +85,10 @@ class ContentApiController extends ApiController
             ->where('status', 'published')
             ->with([
                 'keywords',
-                'entities:id,name,slug,ort,entity_type_id',
+                'entities:id,name,slug,entity_type_id',
                 'entities.entityType:id,code,name',
+                'entities.outgoingRelationships' => fn ($q) => $q->where('relation_type_id', 1)->where('is_active', true),
+                'entities.outgoingRelationships.targetEntity:id,name,slug',
                 'coverImage.contextFile',
                 'images.contextFile',
             ])
@@ -115,7 +117,7 @@ class ContentApiController extends ApiController
             'entities' => $piece->entities->map(fn ($e) => [
                 'name' => $e->name,
                 'slug' => $e->slug,
-                'ort' => $e->ort,
+                'ort' => $e->outgoingRelationships->first()?->targetEntity?->name,
                 'entity_type' => $e->entityType ? [
                     'code' => $e->entityType->code,
                     'name' => $e->entityType->name,

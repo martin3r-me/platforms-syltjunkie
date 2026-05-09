@@ -74,7 +74,7 @@ class GetEntityTool implements ToolContract, ToolMetadataContract
                 'name' => $entity->name,
                 'slug' => $entity->slug,
                 'description' => $entity->description,
-                'ort' => $entity->ort,
+                'ort' => $entity->ortEntity()?->name,
                 'latitude' => $entity->latitude,
                 'longitude' => $entity->longitude,
                 'season' => $entity->season,

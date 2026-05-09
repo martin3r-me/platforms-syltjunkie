@@ -34,6 +34,8 @@ class ReviewIndex extends Component
                     $q->where('platform', 'google_maps')->where('is_active', true);
                 },
                 'entityUrls.latestSnapshot',
+                'outgoingRelationships' => fn($q) => $q->where('relation_type_id', 1)->where('is_active', true),
+                'outgoingRelationships.targetEntity:id,name,slug',
             ])
             ->get()
             ->map(function ($entity) {

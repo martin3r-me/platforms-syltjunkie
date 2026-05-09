@@ -18,7 +18,8 @@
                 <h1 class="text-xl font-semibold text-gray-900">{{ $entity->name }}</h1>
                 <p class="text-[13px] text-gray-500 mt-1">
                     {{ $entity->entityType?->group?->name }} &rarr; {{ $entity->entityType?->name }}
-                    @if($entity->ort) &middot; {{ $entity->ort }} @endif
+                    @php $ortName = $entity->outgoingRelationships->where('relation_type_id', 1)->where('is_active', true)->first()?->targetEntity?->name; @endphp
+                    @if($ortName) &middot; {{ $ortName }} @endif
                 </p>
             </div>
 

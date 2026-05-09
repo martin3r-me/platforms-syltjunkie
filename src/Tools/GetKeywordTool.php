@@ -76,7 +76,7 @@ class GetKeywordTool implements ToolContract, ToolMetadataContract
                 'entities' => $keyword->entities->map(fn($e) => [
                     'id' => $e->id,
                     'name' => $e->name,
-                    'ort' => $e->ort,
+                    'ort' => $e->ortEntity()?->name,
                     'attribution_type' => $e->pivot->attribution_type,
                     'confidence' => $e->pivot->confidence,
                 ])->toArray(),

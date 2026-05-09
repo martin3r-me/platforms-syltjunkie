@@ -67,7 +67,7 @@
                                 {{ $entity->entityType?->name }}
                             </td>
                             <td class="px-4 py-3 text-[11px] text-gray-500">
-                                {{ $entity->ort }}
+                                {{ $entity->outgoingRelationships->first()?->targetEntity?->name }}
                             </td>
                             <td class="px-4 py-3">
                                 @if($entity->latest_rating)

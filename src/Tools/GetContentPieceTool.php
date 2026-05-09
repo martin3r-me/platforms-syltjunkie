@@ -88,7 +88,7 @@ class GetContentPieceTool implements ToolContract, ToolMetadataContract
                 'entities' => $piece->entities->map(fn($e) => [
                     'id' => $e->id,
                     'name' => $e->name,
-                    'ort' => $e->ort,
+                    'ort' => $e->ortEntity()?->name,
                     'is_primary' => (bool) $e->pivot->is_primary,
                     'display_order' => $e->pivot->display_order,
                 ])->toArray(),

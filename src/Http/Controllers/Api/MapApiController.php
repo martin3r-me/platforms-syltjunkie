@@ -26,6 +26,8 @@ class MapApiController extends ApiController
                 'entityType.group:id,code,prefix',
                 'images' => fn ($q) => $q->wherePivot('is_primary', true)->limit(1),
                 'images.contextFile',
+                'outgoingRelationships' => fn ($q) => $q->where('relation_type_id', 1)->where('is_active', true),
+                'outgoingRelationships.targetEntity:id,name,slug',
             ]);
 
         // Filter: type
@@ -41,15 +43,20 @@ class MapApiController extends ApiController
             $query->whereHas('entityType.group', fn ($q) => $q->where('code', $group));
         }
 
-        // Filter: ort
+        // Filter: ort (by slug of the related Ort entity)
         if ($ort = $request->query('ort')) {
-            $query->where('ort', $ort);
+            $query->whereHas('outgoingRelationships', fn ($q) => $q
+                ->where('relation_type_id', 1)
+                ->where('is_active', true)
+                ->whereHas('targetEntity', fn ($q2) => $q2->where('slug', $ort))
+            );
         }
 
         $entities = $query->get();
 
         $data = $entities->map(function (SjEntity $entity) {
             $primaryImage = $entity->images->first();
+            $ortRelationship = $entity->outgoingRelationships->first();
 
             return [
                 'id' => $entity->id,
@@ -57,7 +64,7 @@ class MapApiController extends ApiController
                 'slug' => $entity->slug,
                 'lat' => $entity->latitude,
                 'lng' => $entity->longitude,
-                'ort' => $entity->ort,
+                'ort' => $ortRelationship?->targetEntity?->name,
                 'group' => $entity->entityType?->group?->code,
                 'group_prefix' => $entity->entityType?->group?->prefix ?? $entity->entityType?->group?->code,
                 'type' => $entity->entityType ? [

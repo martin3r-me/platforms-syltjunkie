@@ -28,7 +28,7 @@ class ListEntitiesTool implements ToolContract, ToolMetadataContract
     public function getSchema(): array
     {
         return $this->mergeSchemas(
-            $this->getStandardGetSchema(['team_id', 'entity_type_id', 'status', 'season', 'ort', 'is_active']),
+            $this->getStandardGetSchema(['team_id', 'entity_type_id', 'status', 'season', 'is_active']),
             [
                 'properties' => [
                     'team_id' => [
@@ -45,7 +45,7 @@ class ListEntitiesTool implements ToolContract, ToolMetadataContract
                     ],
                     'ort' => [
                         'type' => 'string',
-                        'description' => 'Optional: Filter nach Ort (z.B. "Westerland", "Kampen", "List").',
+                        'description' => 'Optional: Filter nach Ort (z.B. "Westerland", "Kampen", "List"). Filtert über die lokalisiert_in-Beziehung.',
                     ],
                     'status' => [
                         'type' => 'string',
@@ -89,7 +89,11 @@ class ListEntitiesTool implements ToolContract, ToolMetadataContract
                 $q->whereHas('entityType', fn($sub) => $sub->where('group_id', (int) $arguments['group_id']));
             }
             if (!empty($arguments['ort'])) {
-                $q->where('ort', $arguments['ort']);
+                $q->whereHas('outgoingRelationships', fn($sub) => $sub
+                    ->where('relation_type_id', 1)
+                    ->where('is_active', true)
+                    ->whereHas('targetEntity', fn($tq) => $tq->where('name', $arguments['ort']))
+                );
             }
             if (!empty($arguments['status'])) {
                 $q->where('status', $arguments['status']);
@@ -103,9 +107,14 @@ class ListEntitiesTool implements ToolContract, ToolMetadataContract
                 $q->with('entityType.group');
             }
 
-            $this->applyStandardFilters($q, $arguments, ['team_id', 'entity_type_id', 'status', 'season', 'ort', 'is_active', 'created_at']);
-            $this->applyStandardSearch($q, $arguments, ['name', 'slug', 'ort', 'description']);
-            $this->applyStandardSort($q, $arguments, ['name', 'ort', 'created_at', 'status'], 'name', 'asc');
+            $q->with([
+                'outgoingRelationships' => fn($sub) => $sub->where('relation_type_id', 1)->where('is_active', true),
+                'outgoingRelationships.targetEntity:id,name',
+            ]);
+
+            $this->applyStandardFilters($q, $arguments, ['team_id', 'entity_type_id', 'status', 'season', 'is_active', 'created_at']);
+            $this->applyStandardSearch($q, $arguments, ['name', 'slug', 'description']);
+            $this->applyStandardSort($q, $arguments, ['name', 'created_at', 'status'], 'name', 'asc');
             $result = $this->applyStandardPaginationResult($q, $arguments);
 
             $includeExtra = !empty($arguments['include_extra_fields']);
@@ -115,7 +124,7 @@ class ListEntitiesTool implements ToolContract, ToolMetadataContract
                     'id' => $e->id,
                     'name' => $e->name,
                     'slug' => $e->slug,
-                    'ort' => $e->ort,
+                    'ort' => $e->outgoingRelationships->first()?->targetEntity?->name,
                     'status' => $e->status,
                     'season' => $e->season,
                     'source' => $e->source,

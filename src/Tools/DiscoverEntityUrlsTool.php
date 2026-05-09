@@ -152,8 +152,9 @@ class DiscoverEntityUrlsTool implements ToolContract, ToolMetadataContract
     protected function buildSearchQuery(SjEntity $entity): string
     {
         $parts = [$entity->name];
-        if ($entity->ort) {
-            $parts[] = $entity->ort;
+        $ortName = $entity->ortEntity()?->name;
+        if ($ortName) {
+            $parts[] = $ortName;
         }
         $parts[] = 'Sylt';
         return implode(' ', $parts);

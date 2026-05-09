@@ -136,6 +136,7 @@ class SyltjunkieServiceProvider extends ServiceProvider
             // Entity Graph - Write Tools
             $registry->register(new \Platform\Syltjunkie\Tools\CreateEntityTool());
             $registry->register(new \Platform\Syltjunkie\Tools\UpdateEntityTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\DeleteEntityTool());
             $registry->register(new \Platform\Syltjunkie\Tools\CreateEntityRelationshipTool());
 
             // Entity URLs & Snapshots

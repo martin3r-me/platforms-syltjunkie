@@ -26,6 +26,8 @@ class EntityApiController extends ApiController
                 'entityType.group:id,code,prefix',
                 'images' => fn ($q) => $q->wherePivot('is_primary', true)->limit(1),
                 'images.contextFile',
+                'outgoingRelationships' => fn ($q) => $q->where('relation_type_id', 1)->where('is_active', true),
+                'outgoingRelationships.targetEntity:id,name,slug',
             ]);
 
         // Filter: type (entity_type code)
@@ -41,9 +43,13 @@ class EntityApiController extends ApiController
             $query->whereHas('entityType.group', fn ($q) => $q->where('code', $group));
         }
 
-        // Filter: ort
+        // Filter: ort (by slug of the related Ort entity)
         if ($ort = $request->query('ort')) {
-            $query->where('ort', $ort);
+            $query->whereHas('outgoingRelationships', fn ($q) => $q
+                ->where('relation_type_id', 1)
+                ->where('is_active', true)
+                ->whereHas('targetEntity', fn ($q2) => $q2->where('slug', $ort))
+            );
         }
 
         // Filter: search
@@ -51,14 +57,18 @@ class EntityApiController extends ApiController
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%")
-                    ->orWhere('ort', 'like', "%{$search}%");
+                    ->orWhereHas('outgoingRelationships', fn ($rq) => $rq
+                        ->where('relation_type_id', 1)
+                        ->where('is_active', true)
+                        ->whereHas('targetEntity', fn ($tq) => $tq->where('name', 'like', "%{$search}%"))
+                    );
             });
         }
 
         // Sorting
         $sortField = $request->query('sort', 'name');
         $sortDir = $request->query('dir', 'asc');
-        $allowedSorts = ['name', 'created_at', 'ort'];
+        $allowedSorts = ['name', 'created_at'];
         if (in_array($sortField, $allowedSorts)) {
             $query->orderBy($sortField, $sortDir === 'desc' ? 'desc' : 'asc');
         }
@@ -69,13 +79,14 @@ class EntityApiController extends ApiController
         $paginator->getCollection()->transform(function (SjEntity $entity) {
             $primaryImage = $entity->images->first();
             $tags = $entity->extra_fields['tags'] ?? [];
+            $ortRelationship = $entity->outgoingRelationships->first();
 
             return [
                 'id' => $entity->id,
                 'slug' => $entity->slug,
                 'name' => $entity->name,
                 'description' => $entity->description,
-                'ort' => $entity->ort,
+                'ort' => $ortRelationship?->targetEntity?->name,
                 'latitude' => $entity->latitude,
                 'longitude' => $entity->longitude,
                 'status' => $entity->status,
@@ -132,12 +143,17 @@ class EntityApiController extends ApiController
 
         $tags = $entity->extra_fields['tags'] ?? [];
 
+        $ortRelationship = $entity->outgoingRelationships
+            ->where('relation_type_id', 1)
+            ->where('is_active', true)
+            ->first();
+
         $data = [
             'id' => $entity->id,
             'slug' => $entity->slug,
             'name' => $entity->name,
             'description' => $entity->description,
-            'ort' => $entity->ort,
+            'ort' => $ortRelationship?->targetEntity?->name,
             'latitude' => $entity->latitude,
             'longitude' => $entity->longitude,
             'status' => $entity->status,

@@ -86,6 +86,8 @@ class LandingApiController extends ApiController
                     'entityType.group:id,code,prefix',
                     'images' => fn ($q) => $q->wherePivot('is_primary', true)->limit(1),
                     'images.contextFile',
+                    'outgoingRelationships' => fn ($q) => $q->where('relation_type_id', 1)->where('is_active', true),
+                    'outgoingRelationships.targetEntity:id,name,slug',
                 ])
                 ->orderByDesc('created_at')
                 ->limit(8)
@@ -111,6 +113,8 @@ class LandingApiController extends ApiController
             ->with([
                 'entityType:id,code,name,color,icon,group_id',
                 'entityType.group:id,code,prefix',
+                'outgoingRelationships' => fn ($q) => $q->where('relation_type_id', 1)->where('is_active', true),
+                'outgoingRelationships.targetEntity:id,name,slug',
             ])
             ->get()
             ->map(fn (SjEntity $entity) => [
@@ -119,7 +123,7 @@ class LandingApiController extends ApiController
                 'slug' => $entity->slug,
                 'lat' => $entity->latitude,
                 'lng' => $entity->longitude,
-                'ort' => $entity->ort,
+                'ort' => $entity->outgoingRelationships->first()?->targetEntity?->name,
                 'group' => $entity->entityType?->group?->code,
                 'group_prefix' => $entity->entityType?->group?->prefix ?? $entity->entityType?->group?->code,
                 'type' => $entity->entityType ? [
@@ -154,7 +158,7 @@ class LandingApiController extends ApiController
             'slug' => $entity->slug,
             'name' => $entity->name,
             'description' => $entity->description,
-            'ort' => $entity->ort,
+            'ort' => $entity->outgoingRelationships->first()?->targetEntity?->name,
             'latitude' => $entity->latitude,
             'longitude' => $entity->longitude,
             'entity_type_code' => $entity->entityType?->code,

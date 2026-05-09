@@ -20,7 +20,11 @@ class MapIndex extends Component
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->where('is_active', true)
-            ->with('entityType:id,name,group_id,color');
+            ->with([
+                'entityType:id,name,group_id,color',
+                'outgoingRelationships' => fn($q) => $q->where('relation_type_id', 1)->where('is_active', true),
+                'outgoingRelationships.targetEntity:id,name,slug',
+            ]);
 
         if ($this->filterGroupId) {
             $query->whereHas('entityType', function ($q) {
@@ -34,7 +38,7 @@ class MapIndex extends Component
             return [
                 'id' => $e->id,
                 'name' => $e->name,
-                'ort' => $e->ort,
+                'ort' => $e->outgoingRelationships->first()?->targetEntity?->name,
                 'lat' => (float) $e->latitude,
                 'lng' => (float) $e->longitude,
                 'type' => $e->entityType?->name,

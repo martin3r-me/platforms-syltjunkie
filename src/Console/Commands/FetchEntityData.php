@@ -148,9 +148,10 @@ class FetchEntityData extends Command
                 $googleMapsUrl = $entity->entityUrls->first();
                 $placeId = $googleMapsUrl?->google_place_id;
 
+                $ortName = $entity->ortEntity()?->name;
                 $keyword = $placeId
                     ? "place_id:{$placeId}"
-                    : trim("{$entity->name} {$entity->ort}");
+                    : trim("{$entity->name} {$ortName}");
 
                 $businessResults = $api->getGoogleBusinessInfo($user, $keyword, $locationCode);
 
@@ -211,7 +212,7 @@ class FetchEntityData extends Command
                 ->whereNull('last_checked_at')
                 ->orWhere('last_checked_at', '<', $staleDate)
             )
-            ->with('entity:id,name,slug,ort,entity_type_id')
+            ->with('entity:id,name,slug,entity_type_id')
             ->orderByRaw('COALESCE(last_checked_at, \'1970-01-01\') ASC')
             ->get();
 

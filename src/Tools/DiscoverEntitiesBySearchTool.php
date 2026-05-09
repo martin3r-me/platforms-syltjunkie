@@ -8,6 +8,7 @@ use Platform\Core\Contracts\ToolMetadataContract;
 use Platform\Core\Contracts\ToolResult;
 use Platform\Integrations\Services\DataForSeoApiService;
 use Platform\Syltjunkie\Models\SjEntity;
+use Platform\Syltjunkie\Models\SjEntityRelationship;
 use Platform\Syltjunkie\Models\SjEntityUrl;
 use Platform\Syltjunkie\Models\SjUrlSnapshot;
 use Platform\Syltjunkie\Tools\Concerns\ResolvesSyltjunkieTeam;
@@ -158,10 +159,27 @@ class DiscoverEntitiesBySearchTool implements ToolContract, ToolMetadataContract
                             'source' => 'import_google',
                             'latitude' => $result->latitude,
                             'longitude' => $result->longitude,
-                            'ort' => $ort,
                             'status' => 'aktiv',
                             'is_active' => true,
                         ]);
+
+                        // Create lokalisiert_in relationship if ort was extracted
+                        if ($ort) {
+                            $ortEntity = SjEntity::where('team_id', $rootTeamId)
+                                ->whereHas('entityType', fn($q) => $q->where('code', 'ort'))
+                                ->where('name', $ort)
+                                ->first();
+
+                            if ($ortEntity) {
+                                SjEntityRelationship::create([
+                                    'team_id' => $rootTeamId,
+                                    'source_entity_id' => $entity->id,
+                                    'target_entity_id' => $ortEntity->id,
+                                    'relation_type_id' => 1,
+                                    'is_active' => true,
+                                ]);
+                            }
+                        }
 
                         // Create Google Maps EntityUrl
                         $googleUrl = $result->cid

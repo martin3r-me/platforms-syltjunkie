@@ -26,7 +26,6 @@ class SjEntity extends Model
         'latitude',
         'longitude',
         'geometry',
-        'ort',
         'season',
         'status',
         'source',
@@ -56,6 +55,14 @@ class SjEntity extends Model
                 $model->slug = Str::slug($model->name);
             }
         });
+    }
+
+    public function ortEntity(): ?self
+    {
+        return $this->outgoingRelationships()
+            ->where('relation_type_id', 1) // lokalisiert_in
+            ->where('is_active', true)
+            ->first()?->targetEntity;
     }
 
     public function entityType(): BelongsTo

@@ -1,36 +1,70 @@
 <div>
-    <div x-show="!collapsed" class="px-3 pt-3 pb-2 border-b border-[#2C3135] mb-2">
-        <span class="text-[10px] uppercase tracking-widest text-gray-500 font-medium">Syltjunkie</span>
+    {{-- Modul Header --}}
+    <div x-show="!collapsed" class="p-3 text-sm italic text-[var(--ui-secondary)] uppercase border-b border-[var(--ui-border)] mb-2">
+        Syltjunkie
     </div>
 
     {{-- Entity Graph --}}
-    <div x-show="!collapsed" class="px-2 mb-1">
-        <div class="px-2 py-1.5 text-[10px] uppercase tracking-widest text-gray-500 font-medium">Entity Graph</div>
-        <a href="{{ route('syltjunkie.dashboard') }}" wire:navigate class="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] text-gray-300 hover:bg-[#2C3135] hover:text-white transition-colors">
-            @svg('heroicon-o-globe-alt', 'w-4 h-4')
-            <span>Dashboard</span>
-        </a>
-        <a href="{{ route('syltjunkie.entities.index') }}" wire:navigate class="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] text-gray-300 hover:bg-[#2C3135] hover:text-white transition-colors">
-            @svg('heroicon-o-building-storefront', 'w-4 h-4')
-            <span>Entities</span>
-        </a>
-        <a href="{{ route('syltjunkie.entity-types.index') }}" wire:navigate class="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] text-gray-300 hover:bg-[#2C3135] hover:text-white transition-colors">
-            @svg('heroicon-o-tag', 'w-4 h-4')
-            <span>Entity Types</span>
-        </a>
-    </div>
+    <x-ui-sidebar-list label="Entity Graph">
+        <x-ui-sidebar-item :href="route('syltjunkie.dashboard')">
+            @svg('heroicon-o-globe-alt', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Dashboard</span>
+        </x-ui-sidebar-item>
+        <x-ui-sidebar-item :href="route('syltjunkie.entities.index')">
+            @svg('heroicon-o-building-storefront', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Entities</span>
+        </x-ui-sidebar-item>
+        <x-ui-sidebar-item :href="route('syltjunkie.entity-types.index')">
+            @svg('heroicon-o-tag', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Entity Types</span>
+        </x-ui-sidebar-item>
+    </x-ui-sidebar-list>
 
-    {{-- Collapsed View --}}
-    <div x-show="collapsed" class="px-2 py-2 border-b border-[#2C3135]">
+    {{-- SEO Monitoring --}}
+    <x-ui-sidebar-list label="SEO Monitoring">
+        <x-ui-sidebar-item :href="route('syltjunkie.dashboard')">
+            @svg('heroicon-o-signal', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Trend Signals</span>
+        </x-ui-sidebar-item>
+        <x-ui-sidebar-item :href="route('syltjunkie.entities.index')">
+            @svg('heroicon-o-chart-bar', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Rankings</span>
+        </x-ui-sidebar-item>
+        <x-ui-sidebar-item :href="route('syltjunkie.entities.index')">
+            @svg('heroicon-o-document-magnifying-glass', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Page Changes</span>
+        </x-ui-sidebar-item>
+    </x-ui-sidebar-list>
+
+    {{-- Google Business --}}
+    <x-ui-sidebar-list label="Google Business">
+        <x-ui-sidebar-item :href="route('syltjunkie.entities.index')">
+            @svg('heroicon-o-map-pin', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Bewertungen</span>
+        </x-ui-sidebar-item>
+        <x-ui-sidebar-item :href="route('syltjunkie.entities.index')">
+            @svg('heroicon-o-map', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Karte</span>
+        </x-ui-sidebar-item>
+    </x-ui-sidebar-list>
+
+    {{-- Collapsed: Icons-only --}}
+    <div x-show="collapsed" class="px-2 py-2 border-b border-[var(--ui-border)]">
         <div class="flex flex-col gap-2">
-            <a href="{{ route('syltjunkie.dashboard') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-[#2C3135] transition-colors" title="Dashboard">
+            <a href="{{ route('syltjunkie.dashboard') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Dashboard">
                 @svg('heroicon-o-globe-alt', 'w-5 h-5')
             </a>
-            <a href="{{ route('syltjunkie.entities.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-[#2C3135] transition-colors" title="Entities">
+            <a href="{{ route('syltjunkie.entities.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Entities">
                 @svg('heroicon-o-building-storefront', 'w-5 h-5')
             </a>
-            <a href="{{ route('syltjunkie.entity-types.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-[#2C3135] transition-colors" title="Entity Types">
+            <a href="{{ route('syltjunkie.entity-types.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Entity Types">
                 @svg('heroicon-o-tag', 'w-5 h-5')
+            </a>
+            <a href="{{ route('syltjunkie.dashboard') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Trend Signals">
+                @svg('heroicon-o-signal', 'w-5 h-5')
+            </a>
+            <a href="{{ route('syltjunkie.entities.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Bewertungen">
+                @svg('heroicon-o-map-pin', 'w-5 h-5')
             </a>
         </div>
     </div>

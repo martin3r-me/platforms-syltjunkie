@@ -629,13 +629,8 @@
         <livewire:syltjunkie.sidebar />
     </x-slot>
 
-    @once
-    @push('styles')
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
-    @endpush
-
-    @push('scripts')
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
     <script>
@@ -730,6 +725,4 @@
         }));
     });
     </script>
-    @endpush
-    @endonce
 </x-ui-page>

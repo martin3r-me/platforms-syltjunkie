@@ -6,6 +6,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Platform\Core\Http\Controllers\ApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\Concerns\ResolvesPublicTeam;
+use Platform\Syltjunkie\Models\SjEntityType;
 use Platform\Syltjunkie\Models\SjEntityTypeGroup;
 
 class EntityTypeApiController extends ApiController
@@ -15,6 +16,25 @@ class EntityTypeApiController extends ApiController
     public function index(Request $request): JsonResponse
     {
         $teamId = $this->resolveTeamId($request);
+
+        if ($request->boolean('flat')) {
+            $types = SjEntityType::where('team_id', $teamId)
+                ->where('is_active', true)
+                ->withCount('entities')
+                ->with('group:id,code')
+                ->orderBy('name')
+                ->get()
+                ->map(fn ($t) => [
+                    'code' => $t->code,
+                    'name' => $t->name,
+                    'icon' => $t->icon,
+                    'color' => $t->color,
+                    'group_code' => $t->group?->code,
+                    'entity_count' => $t->entities_count,
+                ]);
+
+            return $this->success($types);
+        }
 
         $groups = SjEntityTypeGroup::where('team_id', $teamId)
             ->where('is_active', true)

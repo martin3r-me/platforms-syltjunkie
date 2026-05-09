@@ -87,8 +87,8 @@ class EntityApiController extends ApiController
                 'name' => $entity->name,
                 'description' => $entity->description,
                 'ort' => $ortRelationship?->targetEntity?->name,
-                'latitude' => $entity->latitude,
-                'longitude' => $entity->longitude,
+                'lat' => $entity->latitude,
+                'lng' => $entity->longitude,
                 'status' => $entity->status,
                 'season' => $entity->season,
                 'entity_type_code' => $entity->entityType?->code,
@@ -109,7 +109,7 @@ class EntityApiController extends ApiController
             ];
         });
 
-        return $this->paginated($paginator);
+        return $this->paginatedWithMeta($paginator);
     }
 
     public function show(Request $request, string $slug): JsonResponse
@@ -123,11 +123,17 @@ class EntityApiController extends ApiController
                 'entityType.group',
                 'images.contextFile',
                 'outgoingRelationships.relationType',
-                'outgoingRelationships.targetEntity:id,name,slug,entity_type_id',
-                'outgoingRelationships.targetEntity.entityType:id,code,name',
+                'outgoingRelationships.targetEntity:id,name,slug,description,latitude,longitude,entity_type_id',
+                'outgoingRelationships.targetEntity.entityType:id,code,name,group_id',
+                'outgoingRelationships.targetEntity.entityType.group:id,code,prefix',
+                'outgoingRelationships.targetEntity.images' => fn ($q) => $q->wherePivot('is_primary', true)->limit(1),
+                'outgoingRelationships.targetEntity.images.contextFile',
                 'incomingRelationships.relationType',
-                'incomingRelationships.sourceEntity:id,name,slug,entity_type_id',
-                'incomingRelationships.sourceEntity.entityType:id,code,name',
+                'incomingRelationships.sourceEntity:id,name,slug,description,latitude,longitude,entity_type_id',
+                'incomingRelationships.sourceEntity.entityType:id,code,name,group_id',
+                'incomingRelationships.sourceEntity.entityType.group:id,code,prefix',
+                'incomingRelationships.sourceEntity.images' => fn ($q) => $q->wherePivot('is_primary', true)->limit(1),
+                'incomingRelationships.sourceEntity.images.contextFile',
                 'keywords',
                 'contentPieces' => fn ($q) => $q->where('status', 'published'),
                 'contentPieces.coverImage.contextFile',
@@ -154,8 +160,8 @@ class EntityApiController extends ApiController
             'name' => $entity->name,
             'description' => $entity->description,
             'ort' => $ortRelationship?->targetEntity?->name,
-            'latitude' => $entity->latitude,
-            'longitude' => $entity->longitude,
+            'lat' => $entity->latitude,
+            'lng' => $entity->longitude,
             'status' => $entity->status,
             'season' => $entity->season,
             'entity_type_code' => $entity->entityType?->code,
@@ -174,7 +180,16 @@ class EntityApiController extends ApiController
                     'prefix' => $entity->entityType->group->prefix ?? $entity->entityType->group->code,
                 ] : null,
             ] : null,
-            'extra_fields' => $entity->extra_fields,
+            'extra_fields' => [
+                'tags' => $entity->extra_fields['tags'] ?? [],
+                'google_is_claimed' => $entity->extra_fields['google_is_claimed'] ?? null,
+                'google_category' => $entity->extra_fields['google_category'] ?? null,
+                'google_current_status' => $entity->extra_fields['google_current_status'] ?? null,
+            ],
+            'completeness' => [
+                'score' => $this->calculateCompleteness($entity),
+                'missing' => $this->getMissingFields($entity),
+            ],
             'images' => $entity->images->map(fn ($img) => [
                 'id' => $img->id,
                 'title' => $img->title,
@@ -183,12 +198,13 @@ class EntityApiController extends ApiController
                 'is_primary' => (bool) $img->pivot->is_primary,
             ])->values(),
             'relationships' => $this->formatRelationships($entity),
-            'keywords' => $entity->keywords->map(fn ($kw) => [
+            'keywords' => $entity->keywords->sortByDesc('search_volume')->take(5)->map(fn ($kw) => [
                 'keyword' => $kw->keyword,
                 'search_volume' => $kw->search_volume,
                 'search_intent' => $kw->search_intent,
                 'trends_sparkline' => $kw->trends_sparkline,
             ])->values(),
+            'keywords_total' => $entity->keywords->count(),
             'content_pieces' => $entity->contentPieces->map(fn ($cp) => [
                 'slug' => $cp->slug,
                 'title' => $cp->title,
@@ -216,9 +232,41 @@ class EntityApiController extends ApiController
                 'platform' => $url->platform,
                 'is_primary' => $url->is_primary,
             ])->values(),
+            'links' => $this->buildLinksObject($entity->entityUrls),
         ];
 
         return $this->success($data);
+    }
+
+    public function keywords(Request $request, string $slug): JsonResponse
+    {
+        $teamId = $this->resolveTeamId($request);
+
+        $entity = SjEntity::where('team_id', $teamId)
+            ->where('slug', $slug)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$entity) {
+            return $this->notFound('Entity not found.');
+        }
+
+        $perPage = min((int) $request->query('per_page', 50), 200);
+
+        $paginator = $entity->keywords()
+            ->orderByDesc('search_volume')
+            ->paginate($perPage);
+
+        $paginator->getCollection()->transform(fn ($kw) => [
+            'keyword' => $kw->keyword,
+            'search_volume' => $kw->search_volume,
+            'search_intent' => $kw->search_intent,
+            'trends_sparkline' => $kw->trends_sparkline,
+            'attribution_type' => $kw->pivot->attribution_type,
+            'confidence' => $kw->pivot->confidence,
+        ]);
+
+        return $this->paginatedWithMeta($paginator);
     }
 
     protected function formatRelationships(SjEntity $entity): array
@@ -229,6 +277,7 @@ class EntityApiController extends ApiController
             if (!$rel->targetEntity || !$rel->is_active) {
                 continue;
             }
+            $primaryImage = $rel->targetEntity->images->first();
             $relationships[] = [
                 'direction' => 'outgoing',
                 'type' => $rel->relationType?->code,
@@ -236,7 +285,17 @@ class EntityApiController extends ApiController
                 'entity' => [
                     'slug' => $rel->targetEntity->slug,
                     'name' => $rel->targetEntity->name,
+                    'description' => $rel->targetEntity->description,
+                    'lat' => $rel->targetEntity->latitude,
+                    'lng' => $rel->targetEntity->longitude,
                     'type' => $rel->targetEntity->entityType?->code,
+                    'type_label' => $rel->targetEntity->entityType?->name,
+                    'group' => $rel->targetEntity->entityType?->group?->code,
+                    'group_prefix' => $rel->targetEntity->entityType?->group?->prefix ?? $rel->targetEntity->entityType?->group?->code,
+                    'primary_image' => $primaryImage ? [
+                        'url' => $primaryImage->url,
+                        'thumbnail_url' => $primaryImage->thumbnail_url,
+                    ] : null,
                 ],
             ];
         }
@@ -245,6 +304,7 @@ class EntityApiController extends ApiController
             if (!$rel->sourceEntity || !$rel->is_active) {
                 continue;
             }
+            $primaryImage = $rel->sourceEntity->images->first();
             $relationships[] = [
                 'direction' => 'incoming',
                 'type' => $rel->relationType?->code,
@@ -252,11 +312,85 @@ class EntityApiController extends ApiController
                 'entity' => [
                     'slug' => $rel->sourceEntity->slug,
                     'name' => $rel->sourceEntity->name,
+                    'description' => $rel->sourceEntity->description,
+                    'lat' => $rel->sourceEntity->latitude,
+                    'lng' => $rel->sourceEntity->longitude,
                     'type' => $rel->sourceEntity->entityType?->code,
+                    'type_label' => $rel->sourceEntity->entityType?->name,
+                    'group' => $rel->sourceEntity->entityType?->group?->code,
+                    'group_prefix' => $rel->sourceEntity->entityType?->group?->prefix ?? $rel->sourceEntity->entityType?->group?->code,
+                    'primary_image' => $primaryImage ? [
+                        'url' => $primaryImage->url,
+                        'thumbnail_url' => $primaryImage->thumbnail_url,
+                    ] : null,
                 ],
             ];
         }
 
         return $relationships;
+    }
+
+    protected function buildLinksObject($entityUrls): array
+    {
+        $links = [];
+        foreach ($entityUrls as $url) {
+            $links[$url->platform] = [
+                'url' => $url->url,
+                'is_primary' => $url->is_primary,
+            ];
+        }
+        return $links;
+    }
+
+    protected function calculateCompleteness(SjEntity $entity): int
+    {
+        $fields = [
+            'description' => !empty($entity->description),
+            'coordinates' => $entity->latitude !== null && $entity->longitude !== null,
+            'images' => $entity->images->isNotEmpty(),
+            'entity_urls' => $entity->entityUrls->isNotEmpty(),
+            'google_business' => !empty($entity->extra_fields['google_is_claimed']),
+            'tags' => !empty($entity->extra_fields['tags']),
+        ];
+
+        $filled = count(array_filter($fields));
+        $total = count($fields);
+
+        return (int) round(($filled / $total) * 100);
+    }
+
+    protected function getMissingFields(SjEntity $entity): array
+    {
+        $missing = [];
+
+        if (empty($entity->description)) {
+            $missing[] = 'description';
+        }
+        if ($entity->latitude === null || $entity->longitude === null) {
+            $missing[] = 'coordinates';
+        }
+        if ($entity->images->isEmpty()) {
+            $missing[] = 'images';
+        }
+        if ($entity->entityUrls->isEmpty()) {
+            $missing[] = 'entity_urls';
+        }
+        if (empty($entity->extra_fields['google_is_claimed'])) {
+            $missing[] = 'google_business';
+        }
+        if (empty($entity->extra_fields['tags'])) {
+            $missing[] = 'tags';
+        }
+
+        return $missing;
+    }
+
+    protected function paginatedWithMeta($paginator): JsonResponse
+    {
+        $response = parent::paginated($paginator);
+        $data = $response->getData(true);
+        $data['data']['pagination']['has_more'] = $paginator->hasMorePages();
+        $data['data']['pagination']['next_page_url'] = $paginator->nextPageUrl();
+        return response()->json($data);
     }
 }

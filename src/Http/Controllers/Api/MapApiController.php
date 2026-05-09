@@ -13,6 +13,8 @@ class MapApiController extends ApiController
 {
     use ResolvesPublicTeam;
 
+    // Note: No pagination — map needs all entities at once for marker rendering.
+    // Filtered via ?type=, ?group=, ?ort= query parameters.
     public function index(Request $request): JsonResponse
     {
         $teamId = $this->resolveTeamId($request);

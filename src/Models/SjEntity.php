@@ -36,8 +36,8 @@ class SjEntity extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'extra_fields' => 'array',
-        'latitude' => 'decimal:7',
-        'longitude' => 'decimal:7',
+        'latitude' => 'float',
+        'longitude' => 'float',
         'geometry' => 'array',
     ];
 

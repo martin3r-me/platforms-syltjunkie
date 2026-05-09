@@ -21,9 +21,12 @@ return [
             'sylt shopping', 'sylt veranstaltungen', 'sylt anreise',
             'sylt wetter', 'sylt tipps', 'westerland', 'kampen sylt',
             'list sylt', 'hörnum', 'keitum',
+            'sylt brunch', 'sylt fahrrad', 'sylt hund', 'sylt kinder',
+            'sylt nachtleben', 'sylt kunst', 'sylt museum', 'sylt wellness',
+            'rantum', 'morsum', 'wenningstedt', 'sylt nordsee',
         ],
         'min_volume' => 50,
-        'max_keywords_per_seed' => 50,
+        'max_keywords_per_seed' => 100,
         'opportunity_min_volume' => 200,
         'intent_patterns' => [
             'transactional' => ['buchen', 'kaufen', 'bestellen', 'mieten', 'reservieren', 'ticket', 'preis', 'kosten', 'günstig', 'angebot'],
@@ -38,6 +41,12 @@ return [
             'events' => ['veranstaltung', 'konzert', 'festival', 'markt', 'silvester', 'weihnacht'],
             'shopping' => ['shopping', 'boutique', 'mode', 'outlet', 'laden', 'geschäft'],
             'anreise' => ['autozug', 'fähre', 'flug', 'bahn', 'anreise', 'parken'],
+        ],
+        'google_trends' => [
+            'min_volume_for_trends' => 200,
+            'time_range' => 'past_12_months',
+            'surge_threshold' => 0.5,
+            'surge_action_threshold' => 1.0,
         ],
     ],
 

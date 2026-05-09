@@ -35,6 +35,27 @@
                 </div>
             </div>
 
+            {{-- Keyword Stats --}}
+            @if($keywordStats['total'] > 0)
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-white rounded-lg border border-gray-200 p-4">
+                    <div class="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1">Keywords</div>
+                    <div class="text-2xl font-bold text-gray-900 tabular-nums">{{ number_format($keywordStats['total']) }}</div>
+                    <div class="text-[11px] text-gray-400 mt-1">Entdeckte Keywords</div>
+                </div>
+                <div class="bg-white rounded-lg border border-gray-200 p-4">
+                    <div class="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1">High Volume</div>
+                    <div class="text-2xl font-bold text-gray-900 tabular-nums">{{ number_format($keywordStats['high_volume']) }}</div>
+                    <div class="text-[11px] text-gray-400 mt-1">Keywords mit 1.000+ Suchen</div>
+                </div>
+                <div class="bg-white rounded-lg border border-gray-200 p-4">
+                    <div class="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1">Trending</div>
+                    <div class="text-2xl font-bold text-gray-900 tabular-nums">{{ number_format($keywordStats['trending']) }}</div>
+                    <div class="text-[11px] text-gray-400 mt-1">Trend-Interesse &ge;50</div>
+                </div>
+            </div>
+            @endif
+
             {{-- Entity Map --}}
             @if($mapEntities->count())
             <div class="bg-white rounded-lg border border-gray-200 p-4">

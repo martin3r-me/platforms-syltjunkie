@@ -24,6 +24,10 @@ class SjKeyword extends Model
         'peak_month',
         'seasonality_index',
         'last_fetched_at',
+        'google_trends_data',
+        'trends_average_interest',
+        'trends_peak_interest',
+        'trends_fetched_at',
     ];
 
     protected $casts = [
@@ -31,6 +35,8 @@ class SjKeyword extends Model
         'competition' => 'decimal:3',
         'seasonality_index' => 'decimal:2',
         'last_fetched_at' => 'datetime',
+        'google_trends_data' => 'array',
+        'trends_fetched_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -116,5 +122,21 @@ class SjKeyword extends Model
             return null;
         }
         return (int) max($mv);
+    }
+
+    /**
+     * Trend-Sparkline: nur die Values aus google_trends_data für SVG-Darstellung.
+     */
+    public function getTrendsSparklineAttribute(): ?array
+    {
+        $data = $this->google_trends_data;
+        if (!is_array($data) || empty($data)) {
+            return null;
+        }
+
+        return array_values(array_filter(
+            array_map(fn($point) => $point['value'] ?? null, $data),
+            fn($v) => $v !== null
+        ));
     }
 }

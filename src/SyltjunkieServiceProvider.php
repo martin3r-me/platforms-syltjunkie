@@ -63,6 +63,7 @@ class SyltjunkieServiceProvider extends ServiceProvider
                 \Platform\Syltjunkie\Console\Commands\SyncFacebookPosts::class,
                 \Platform\Syltjunkie\Console\Commands\FetchEntityData::class,
                 \Platform\Syltjunkie\Console\Commands\DiscoverKeywords::class,
+                \Platform\Syltjunkie\Console\Commands\FetchGoogleTrends::class,
             ]);
         }
 
@@ -99,6 +100,12 @@ class SyltjunkieServiceProvider extends ServiceProvider
             // Keyword Discovery: monthly, expand seeds + detect opportunities
             $schedule->command('syltjunkie:discover-keywords --detect-opportunities')
                 ->monthlyOn(1, '06:00')
+                ->withoutOverlapping()
+                ->runInBackground();
+
+            // Google Trends: monthly (15th), 2 weeks after keyword discovery
+            $schedule->command('syltjunkie:fetch-google-trends')
+                ->monthlyOn(15, '06:30')
                 ->withoutOverlapping()
                 ->runInBackground();
         });

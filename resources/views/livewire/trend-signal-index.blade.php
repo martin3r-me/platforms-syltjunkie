@@ -53,6 +53,8 @@
                     <option value="ranking_change">Ranking Change</option>
                     <option value="new_keyword">New Keyword</option>
                     <option value="volume_spike">Volume Spike</option>
+                    <option value="trend_surge">Trend Surge</option>
+                    <option value="keyword_opportunity">Keyword Opportunity</option>
                 </select>
             </div>
 

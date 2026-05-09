@@ -26,6 +26,10 @@
             @svg('heroicon-o-signal', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Trend Signals</span>
         </x-ui-sidebar-item>
+        <x-ui-sidebar-item :href="route('syltjunkie.keywords.index')">
+            @svg('heroicon-o-magnifying-glass', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Keywords</span>
+        </x-ui-sidebar-item>
         <x-ui-sidebar-item :href="route('syltjunkie.rankings.index')">
             @svg('heroicon-o-chart-bar', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Rankings</span>
@@ -82,6 +86,9 @@
             </a>
             <a href="{{ route('syltjunkie.trend-signals.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Trend Signals">
                 @svg('heroicon-o-signal', 'w-5 h-5')
+            </a>
+            <a href="{{ route('syltjunkie.keywords.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Keywords">
+                @svg('heroicon-o-magnifying-glass', 'w-5 h-5')
             </a>
             <a href="{{ route('syltjunkie.rankings.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Rankings">
                 @svg('heroicon-o-chart-bar', 'w-5 h-5')

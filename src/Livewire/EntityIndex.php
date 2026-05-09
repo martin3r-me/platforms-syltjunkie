@@ -16,9 +16,22 @@ class EntityIndex extends Component
     public ?int $filterGroupId = null;
     public ?int $filterTypeId = null;
     public string $filterStatus = '';
+    public string $sortField = 'name';
+    public string $sortDir = 'asc';
 
     public function updatingSearch(): void
     {
+        $this->resetPage();
+    }
+
+    public function sortBy(string $field): void
+    {
+        if ($this->sortField === $field) {
+            $this->sortDir = $this->sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortField = $field;
+            $this->sortDir = $field === 'name' ? 'asc' : 'desc';
+        }
         $this->resetPage();
     }
 
@@ -28,7 +41,12 @@ class EntityIndex extends Component
         $team = $user->currentTeam;
 
         $query = SjEntity::where('team_id', $team->id)
-            ->with('entityType.group');
+            ->with([
+                'entityType.group',
+                'entityUrls' => fn($q) => $q->where('is_active', true)->where('platform', 'website'),
+                'entityUrls.latestSnapshot',
+                'entityUrls.latestPageSnapshot',
+            ]);
 
         if ($this->search) {
             $query->where(function ($q) {
@@ -52,7 +70,15 @@ class EntityIndex extends Component
             $query->where('status', $this->filterStatus);
         }
 
-        $entities = $query->orderBy('name')->paginate(25);
+        // Sortierung
+        if (in_array($this->sortField, ['name', 'ort', 'status'])) {
+            $query->orderBy($this->sortField, $this->sortDir);
+        } else {
+            // Für berechnete Felder: Standard-Sortierung, Post-Sort im View
+            $query->orderBy('name', 'asc');
+        }
+
+        $entities = $query->paginate(50);
 
         $groups = SjEntityTypeGroup::where('team_id', $team->id)
             ->where('is_active', true)

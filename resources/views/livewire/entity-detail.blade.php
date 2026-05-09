@@ -63,6 +63,103 @@
             </div>
             @endif
 
+            {{-- Google Business Card --}}
+            @php
+                $googleUrl = $entity->entityUrls->firstWhere('platform', 'google_maps');
+                $googleSnapshot = $googleUrl?->latestSnapshot;
+                $googleRaw = $googleSnapshot?->raw_response ?? [];
+                $ratingDist = $googleRaw['rating_distribution'] ?? [];
+                $placeTopics = $googleRaw['place_topics'] ?? [];
+                $googleClaimed = $entity->extra_fields['google_is_claimed'] ?? null;
+                $googleCategory = $entity->extra_fields['google_category'] ?? null;
+            @endphp
+            @if($googleSnapshot && $googleSnapshot->average_rating)
+            <div class="bg-white rounded-lg border border-gray-200 p-4">
+                <h2 class="text-[13px] font-semibold text-gray-700 mb-3">Google Business</h2>
+
+                <div class="flex items-start gap-6">
+                    {{-- Rating --}}
+                    <div class="flex-shrink-0">
+                        <div class="text-3xl font-bold text-gray-900">{{ number_format($googleSnapshot->average_rating, 1) }}</div>
+                        <div class="flex items-center gap-0.5 mt-1">
+                            @for($i = 1; $i <= 5; $i++)
+                                @if($i <= floor($googleSnapshot->average_rating))
+                                    <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                @elseif($i - $googleSnapshot->average_rating < 1)
+                                    <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <defs><linearGradient id="half-star"><stop offset="50%" stop-color="currentColor"/><stop offset="50%" stop-color="#D1D5DB"/></linearGradient></defs>
+                                        <path fill="url(#half-star)" d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                    </svg>
+                                @else
+                                    <svg class="w-4 h-4 text-gray-300" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                @endif
+                            @endfor
+                        </div>
+                        <div class="text-[12px] text-gray-500 mt-1">{{ number_format($googleSnapshot->review_count, 0, ',', '.') }} Bewertungen</div>
+                    </div>
+
+                    {{-- Meta info --}}
+                    <div class="flex-1 space-y-2">
+                        <div class="flex flex-wrap items-center gap-2">
+                            @if($googleClaimed !== null)
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium {{ $googleClaimed ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500' }}">
+                                    {{ $googleClaimed ? 'Claimed' : 'Nicht claimed' }}
+                                </span>
+                            @endif
+                            @if($googleCategory)
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700">
+                                    {{ $googleCategory }}
+                                </span>
+                            @endif
+                        </div>
+
+                        {{-- Rating Distribution --}}
+                        @if(count($ratingDist))
+                        <div class="space-y-1 pt-1">
+                            @for($star = 5; $star >= 1; $star--)
+                                @php
+                                    $count = $ratingDist[$star] ?? $ratingDist[$star - 1] ?? 0;
+                                    if (is_array($count)) $count = $count['count'] ?? 0;
+                                    $maxCount = max(1, max(array_map(fn($v) => is_array($v) ? ($v['count'] ?? 0) : (int)$v, $ratingDist)));
+                                    $pct = $maxCount > 0 ? ($count / $maxCount) * 100 : 0;
+                                @endphp
+                                <div class="flex items-center gap-2 text-[11px]">
+                                    <span class="w-4 text-right text-gray-500 font-medium">{{ $star }}</span>
+                                    <svg class="w-3 h-3 text-yellow-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                    <div class="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                        <div class="h-full bg-yellow-400 rounded-full" style="width: {{ $pct }}%"></div>
+                                    </div>
+                                    <span class="w-10 text-right text-gray-400 tabular-nums">{{ number_format($count, 0, ',', '.') }}</span>
+                                </div>
+                            @endfor
+                        </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Place Topics --}}
+                @if(count($placeTopics))
+                <div class="flex flex-wrap gap-1.5 mt-4 pt-3 border-t border-gray-100">
+                    @foreach(array_slice($placeTopics, 0, 15) as $topic)
+                        @php
+                            $topicName = is_array($topic) ? ($topic['keyword'] ?? ($topic['topic'] ?? ($topic['name'] ?? ''))) : $topic;
+                            $topicCount = is_array($topic) ? ($topic['count'] ?? null) : null;
+                        @endphp
+                        @if($topicName)
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] bg-gray-100 text-gray-600">
+                            {{ $topicName }}@if($topicCount) <span class="text-gray-400 ml-1">({{ number_format($topicCount, 0, ',', '.') }})</span>@endif
+                        </span>
+                        @endif
+                    @endforeach
+                </div>
+                @endif
+
+                <div class="text-[11px] text-gray-300 mt-3">
+                    Snapshot vom {{ $googleSnapshot->captured_at->format('d.m.Y') }}
+                </div>
+            </div>
+            @endif
+
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {{-- Main Content --}}
                 <div class="lg:col-span-2 space-y-6">
@@ -430,6 +527,12 @@
                                             @endif
                                             @if($entityUrl->latestSnapshot->domain_authority)
                                                 <span>DA {{ $entityUrl->latestSnapshot->domain_authority }}</span>
+                                            @endif
+                                            @if($entityUrl->platform === 'google_maps' && $entityUrl->latestSnapshot->average_rating)
+                                                <span>&#9733; {{ number_format($entityUrl->latestSnapshot->average_rating, 1) }}</span>
+                                            @endif
+                                            @if($entityUrl->platform === 'google_maps' && $entityUrl->latestSnapshot->review_count)
+                                                <span>{{ number_format($entityUrl->latestSnapshot->review_count, 0, ',', '.') }} Reviews</span>
                                             @endif
                                         </div>
                                     @elseif($entityUrl->last_checked_at)

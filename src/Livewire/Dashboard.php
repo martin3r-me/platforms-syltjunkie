@@ -38,7 +38,7 @@ class Dashboard extends Component
             ->whereNotNull('longitude')
             ->where('is_active', true)
             ->select('id', 'name', 'ort', 'latitude', 'longitude', 'status', 'entity_type_id')
-            ->with('entityType:id,name')
+            ->with('entityType:id,name,color')
             ->get();
 
         $mapPoints = $mapEntities->map(function ($e) {
@@ -49,6 +49,7 @@ class Dashboard extends Component
                 'lat' => (float) $e->latitude,
                 'lng' => (float) $e->longitude,
                 'type' => $e->entityType?->name,
+                'color' => $e->entityType?->color ?? '#3B82F6',
                 'status' => $e->status,
             ];
         })->values()->toArray();

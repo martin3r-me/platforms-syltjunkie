@@ -89,8 +89,9 @@
                                     {{-- Entity Name + Type --}}
                                     <td class="px-4 py-2.5">
                                         <div class="flex items-center gap-2.5">
-                                            <div class="w-7 h-7 rounded-md bg-blue-50 flex items-center justify-center flex-shrink-0">
-                                                @svg('heroicon-o-building-storefront', 'w-3.5 h-3.5 text-blue-600')
+                                            <div class="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
+                                                 style="background-color: {{ $entity->entityType?->color ?? '#3B82F6' }}15; color: {{ $entity->entityType?->color ?? '#3B82F6' }};">
+                                                @svg('heroicon-o-building-storefront', 'w-3.5 h-3.5')
                                             </div>
                                             <div class="min-w-0">
                                                 <div class="text-[13px] font-medium text-gray-900 truncate">{{ $entity->name }}</div>

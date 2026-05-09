@@ -21,6 +21,7 @@ class SjEntityType extends Model
         'name',
         'description',
         'icon',
+        'color',
         'extra_field_schema',
         'sort_order',
         'is_active',

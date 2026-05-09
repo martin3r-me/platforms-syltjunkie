@@ -658,6 +658,20 @@
                 const lng = @json($editLongitude) ?? 8.3047;
                 const hasCoords = @json($editLatitude) !== null;
                 const geometry = @json($geometry);
+                const entityColor = @json($entity->entityType?->color ?? '#3B82F6');
+
+                function createColoredIcon(color) {
+                    return L.divIcon({
+                        html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="28" height="42">
+                            <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+                            <circle cx="12" cy="12" r="5" fill="#fff" opacity="0.9"/>
+                        </svg>`,
+                        iconSize: [28, 42],
+                        iconAnchor: [14, 42],
+                        popupAnchor: [0, -42],
+                        className: '',
+                    });
+                }
 
                 this.map = L.map('entity-map').setView([lat, lng], hasCoords ? 15 : 11);
 
@@ -690,7 +704,7 @@
 
                 // Existing marker
                 if (hasCoords) {
-                    this.marker = L.marker([lat, lng], { draggable: true }).addTo(this.map);
+                    this.marker = L.marker([lat, lng], { draggable: true, icon: createColoredIcon(entityColor) }).addTo(this.map);
                     this.marker.on('dragend', (e) => {
                         const pos = e.target.getLatLng();
                         this.$wire.saveCoordinates(pos.lat, pos.lng);
@@ -723,7 +737,7 @@
                     if (this.marker) {
                         this.marker.setLatLng(e.latlng);
                     } else {
-                        this.marker = L.marker(e.latlng, { draggable: true }).addTo(this.map);
+                        this.marker = L.marker(e.latlng, { draggable: true, icon: createColoredIcon(entityColor) }).addTo(this.map);
                         this.marker.on('dragend', (ev) => {
                             const pos = ev.target.getLatLng();
                             this.$wire.saveCoordinates(pos.lat, pos.lng);

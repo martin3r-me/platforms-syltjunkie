@@ -17,7 +17,11 @@
             @forelse($groups as $group)
             <div class="bg-white rounded-lg border border-gray-200">
                 <div class="px-4 py-3 border-b border-gray-100">
-                    <h2 class="text-[13px] font-semibold text-gray-700">{{ $group->name }}</h2>
+                    @php $groupColor = $group->entityTypes->first()?->color ?? '#6B7280'; @endphp
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {{ $groupColor }};"></span>
+                        <h2 class="text-[13px] font-semibold text-gray-700">{{ $group->name }}</h2>
+                    </div>
                     @if($group->description)
                         <p class="text-[11px] text-gray-400 mt-0.5">{{ $group->description }}</p>
                     @endif
@@ -26,8 +30,9 @@
                     @foreach($group->entityTypes as $type)
                     <div class="flex items-center justify-between px-4 py-3">
                         <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-md bg-gray-50 flex items-center justify-center">
-                                @svg('heroicon-o-tag', 'w-4 h-4 text-gray-400')
+                            <div class="w-8 h-8 rounded-md flex items-center justify-center"
+                                 style="background-color: {{ $type->color ?? '#6B7280' }}15; color: {{ $type->color ?? '#6B7280' }};">
+                                @svg('heroicon-o-tag', 'w-4 h-4')
                             </div>
                             <div>
                                 <div class="text-[13px] font-medium text-gray-900">{{ $type->name }}</div>

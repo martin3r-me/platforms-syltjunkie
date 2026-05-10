@@ -68,7 +68,7 @@ class UpdateEntityTool implements ToolContract, ToolMetadataContract
                 return ToolResult::error('NOT_FOUND', 'Entity nicht gefunden.');
             }
 
-            $updatable = ['name', 'slug', 'description', 'latitude', 'longitude', 'geometry', 'season', 'status', 'source', 'is_active'];
+            $updatable = ['name', 'slug', 'description', 'latitude', 'longitude', 'season', 'status', 'source', 'is_active'];
             foreach ($updatable as $field) {
                 if (array_key_exists($field, $arguments)) {
                     $entity->{$field} = $arguments[$field];
@@ -79,6 +79,10 @@ class UpdateEntityTool implements ToolContract, ToolMetadataContract
             }
 
             $entity->save();
+
+            if (array_key_exists('geometry', $arguments)) {
+                $entity->setGeometry($arguments['geometry']);
+            }
 
             // Update lokalisiert_in relationship if ort is provided
             if (array_key_exists('ort', $arguments)) {

@@ -60,7 +60,7 @@ class SjEntity extends Model
     {
         if ($geoJson) {
             DB::statement(
-                'UPDATE sj_entities SET geometry = ST_GeomFromGeoJSON(?, 1, 4326) WHERE id = ?',
+                'UPDATE sj_entities SET geometry = ST_GeomFromGeoJSON(CAST(? AS JSON), 1, 4326) WHERE id = ?',
                 [json_encode($geoJson), $this->id]
             );
         } else {

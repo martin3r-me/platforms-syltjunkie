@@ -49,10 +49,12 @@ class MatchNearbyImages extends Command
         }
 
         if ($entityId) {
-            $entities = SjEntity::whereNotNull('latitude')
-                ->whereNotNull('longitude')
-                ->where('is_active', true)
+            $entities = SjEntity::where('is_active', true)
                 ->where('id', $entityId)
+                ->where(function ($q) {
+                    $q->whereNotNull('latitude')->whereNotNull('longitude');
+                    $q->orWhereRaw('geometry IS NOT NULL');
+                })
                 ->with('entityType:id,code')
                 ->get();
         } else {
@@ -81,9 +83,12 @@ class MatchNearbyImages extends Command
      */
     protected function loadPrioritizedEntities(int $limit): \Illuminate\Support\Collection
     {
-        $baseConditions = fn ($q) => $q->whereNotNull('latitude')
-            ->whereNotNull('longitude')
-            ->where('is_active', true)
+        $baseConditions = fn ($q) => $q->where('is_active', true)
+            ->where(function ($q) {
+                $q->where(function ($q2) {
+                    $q2->whereNotNull('latitude')->whereNotNull('longitude');
+                })->orWhereRaw('geometry IS NOT NULL');
+            })
             ->with('entityType:id,code');
 
         // Subquery: last geo_match timestamp per entity
@@ -93,9 +98,12 @@ class MatchNearbyImages extends Command
             ->groupBy('entity_id');
 
         // Priority 1: Entities never geo-matched
-        $neverMatched = SjEntity::whereNotNull('latitude')
-            ->whereNotNull('longitude')
-            ->where('is_active', true)
+        $neverMatched = SjEntity::where('is_active', true)
+            ->where(function ($q) {
+                $q->where(function ($q2) {
+                    $q2->whereNotNull('latitude')->whereNotNull('longitude');
+                })->orWhereRaw('geometry IS NOT NULL');
+            })
             ->whereNotExists(function ($q) {
                 $q->select(DB::raw(1))
                     ->from('sj_image_entity')
@@ -116,9 +124,12 @@ class MatchNearbyImages extends Command
 
         // Priority 2: Entities with new images since last match
         // (images.created_at > last geo_match created_at for that entity)
-        $withNewImages = SjEntity::whereNotNull('latitude')
-            ->whereNotNull('longitude')
-            ->where('is_active', true)
+        $withNewImages = SjEntity::where('is_active', true)
+            ->where(function ($q) {
+                $q->where(function ($q2) {
+                    $q2->whereNotNull('latitude')->whereNotNull('longitude');
+                })->orWhereRaw('geometry IS NOT NULL');
+            })
             ->whereNotIn('id', $excludeIds)
             ->whereExists(function ($q) {
                 $q->select(DB::raw(1))
@@ -143,9 +154,12 @@ class MatchNearbyImages extends Command
         // Priority 3: Oldest last-matched first (rotating backfill)
         $rotating = collect();
         if ($remaining > 0) {
-            $rotating = SjEntity::whereNotNull('latitude')
-                ->whereNotNull('longitude')
-                ->where('is_active', true)
+            $rotating = SjEntity::where('is_active', true)
+                ->where(function ($q) {
+                    $q->where(function ($q2) {
+                        $q2->whereNotNull('latitude')->whereNotNull('longitude');
+                    })->orWhereRaw('geometry IS NOT NULL');
+                })
                 ->whereNotIn('id', $excludeIds)
                 ->leftJoinSub($lastMatchSub, 'lm', 'lm.entity_id', '=', 'sj_entities.id')
                 ->orderBy('lm.last_matched_at', 'asc')
@@ -169,21 +183,61 @@ class MatchNearbyImages extends Command
             ->where('entity_id', $entity->id)
             ->pluck('sj_image_id');
 
-        $nearbyImages = SjImage::nearby($entity->latitude, $entity->longitude, $radius)
-            ->where('team_id', $entity->team_id)
-            ->whereNotIn('id', $existingImageIds)
-            ->limit(50)
-            ->get();
+        // Determine match strategy: geometry-based or haversine fallback
+        $geoRow = DB::selectOne(
+            'SELECT ST_AsGeoJSON(geometry) as geo, ST_GeometryType(geometry) as geo_type FROM sj_entities WHERE id = ?',
+            [$entity->id]
+        );
+
+        $matchMethod = 'haversine';
+        $nearbyImages = null;
+
+        if ($geoRow?->geo && $geoRow->geo_type) {
+            $geoJson = json_decode($geoRow->geo, true);
+            $geoType = $geoRow->geo_type; // e.g. POLYGON, MULTIPOLYGON, LINESTRING
+
+            if (in_array($geoType, ['POLYGON', 'MULTIPOLYGON'])) {
+                $matchMethod = 'polygon';
+                $nearbyImages = SjImage::withinGeoJson($geoJson)
+                    ->where('team_id', $entity->team_id)
+                    ->whereNotIn('id', $existingImageIds)
+                    ->limit(50)
+                    ->get();
+            } elseif ($geoType === 'LINESTRING') {
+                $matchMethod = 'linestring';
+                $nearbyImages = SjImage::alongRoute($geoJson, 50)
+                    ->where('team_id', $entity->team_id)
+                    ->whereNotIn('id', $existingImageIds)
+                    ->limit(50)
+                    ->get();
+            }
+        }
+
+        // Haversine fallback for Point entities or entities without geometry
+        if ($nearbyImages === null) {
+            if (!$entity->latitude || !$entity->longitude) {
+                return 0;
+            }
+            $nearbyImages = SjImage::nearby($entity->latitude, $entity->longitude, $radius)
+                ->where('team_id', $entity->team_id)
+                ->whereNotIn('id', $existingImageIds)
+                ->limit(50)
+                ->get();
+        }
 
         if ($nearbyImages->isEmpty()) {
             return 0;
         }
 
         if ($isDryRun) {
-            $this->line("  [{$entity->name}] ({$typeCode}, r={$radius}km): {$nearbyImages->count()} new matches");
+            $this->line("  [{$entity->name}] ({$typeCode}, {$matchMethod}): {$nearbyImages->count()} new matches");
             foreach ($nearbyImages->take(5) as $img) {
-                $dist = $this->haversineMeters($entity->latitude, $entity->longitude, $img->latitude, $img->longitude);
-                $this->line("    - #{$img->id} \"{$img->title}\" — {$dist}m");
+                if ($entity->latitude && $entity->longitude && $img->latitude && $img->longitude) {
+                    $dist = $this->haversineMeters($entity->latitude, $entity->longitude, $img->latitude, $img->longitude);
+                    $this->line("    - #{$img->id} \"{$img->title}\" — {$dist}m");
+                } else {
+                    $this->line("    - #{$img->id} \"{$img->title}\"");
+                }
             }
             return $nearbyImages->count();
         }
@@ -193,7 +247,10 @@ class MatchNearbyImages extends Command
         $sortBase = 100;
 
         foreach ($nearbyImages as $i => $image) {
-            $dist = $this->haversineMeters($entity->latitude, $entity->longitude, $image->latitude, $image->longitude);
+            $dist = ($entity->latitude && $entity->longitude && $image->latitude && $image->longitude)
+                ? $this->haversineMeters($entity->latitude, $entity->longitude, $image->latitude, $image->longitude)
+                : null;
+
             $rows[] = [
                 'sj_image_id' => $image->id,
                 'entity_id'   => $entity->id,
@@ -208,7 +265,7 @@ class MatchNearbyImages extends Command
 
         DB::table('sj_image_entity')->insert($rows);
 
-        $this->line("  [{$entity->name}] ({$typeCode}, r={$radius}km): {$nearbyImages->count()} matched");
+        $this->line("  [{$entity->name}] ({$typeCode}, {$matchMethod}): {$nearbyImages->count()} matched");
 
         return $nearbyImages->count();
     }

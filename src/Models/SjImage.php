@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\DB;
 use Platform\Core\Models\ContextFile;
 use Platform\Core\Services\ContextFileService;
 use Symfony\Component\Uid\UuidV7;
@@ -45,6 +46,22 @@ class SjImage extends Model
                 $model->uuid = $uuid;
             }
         });
+
+        static::saving(function ($model) {
+            if ($model->isDirty(['latitude', 'longitude']) && $model->latitude && $model->longitude) {
+                $model->_syncLocation = true;
+            }
+        });
+
+        static::saved(function ($model) {
+            if ($model->_syncLocation ?? false) {
+                DB::statement(
+                    'UPDATE sj_images SET location = ST_SRID(POINT(?, ?), 4326) WHERE id = ?',
+                    [$model->longitude, $model->latitude, $model->id]
+                );
+                $model->_syncLocation = false;
+            }
+        });
     }
 
     public function contextFile(): BelongsTo
@@ -71,6 +88,22 @@ class SjImage extends Model
             ->whereNotNull('longitude')
             ->whereRaw("{$haversine} < ?", [$lat, $lng, $lat, $radiusKm])
             ->orderByRaw("{$haversine}", [$lat, $lng, $lat]);
+    }
+
+    public function scopeWithinGeoJson($query, array $geoJson)
+    {
+        return $query->whereNotNull('location')
+            ->whereRaw('ST_Contains(ST_GeomFromGeoJSON(?, 1, 4326), location)', [json_encode($geoJson)]);
+    }
+
+    public function scopeAlongRoute($query, array $lineStringGeoJson, float $bufferMeters = 50)
+    {
+        $bufferDeg = $bufferMeters / 111320;
+
+        return $query->whereNotNull('location')
+            ->whereRaw('ST_Contains(ST_Buffer(ST_GeomFromGeoJSON(?, 1, 4326), ?), location)', [
+                json_encode($lineStringGeoJson), $bufferDeg,
+            ]);
     }
 
     public function scopeWithTag($query, string $tag)

@@ -9,6 +9,14 @@ return new class extends Migration
     public function up(): void
     {
         // --- sj_entities: JSON geometry → native GEOMETRY ---
+
+        // Clean up leftover 'geo' column from a previous failed run
+        if (Schema::hasColumn('sj_entities', 'geo')) {
+            Schema::table('sj_entities', function ($table) {
+                $table->dropColumn('geo');
+            });
+        }
+
         DB::statement('ALTER TABLE sj_entities ADD COLUMN geo GEOMETRY SRID 4326 NULL AFTER geometry');
 
         DB::statement('UPDATE sj_entities SET geo = ST_GeomFromGeoJSON(CAST(geometry AS CHAR), 1, 4326) WHERE geometry IS NOT NULL');
@@ -20,11 +28,11 @@ return new class extends Migration
         DB::statement('ALTER TABLE sj_entities CHANGE geo geometry GEOMETRY SRID 4326 NULL');
 
         // --- sj_images: add location POINT ---
-        DB::statement('ALTER TABLE sj_images ADD COLUMN location POINT SRID 4326 NULL AFTER longitude');
+        if (!Schema::hasColumn('sj_images', 'location')) {
+            DB::statement('ALTER TABLE sj_images ADD COLUMN location POINT SRID 4326 NULL AFTER longitude');
+        }
 
         DB::statement('UPDATE sj_images SET location = ST_SRID(POINT(longitude, latitude), 4326) WHERE latitude IS NOT NULL AND longitude IS NOT NULL');
-
-        // Spatial indexes require NOT NULL — skip for nullable columns
     }
 
     public function down(): void

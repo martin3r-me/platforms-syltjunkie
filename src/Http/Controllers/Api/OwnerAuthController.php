@@ -23,7 +23,7 @@ class OwnerAuthController extends ApiController
             'email' => 'required|email|max:255',
             'name' => 'nullable|string|max:255',
             'entity_slug' => 'nullable|string|max:255',
-            'redirect_url' => 'nullable|url|max:500',
+            'redirect_url' => 'required|url|max:500',
             'from_address' => 'nullable|email|max:255',
         ]);
 
@@ -38,6 +38,7 @@ class OwnerAuthController extends ApiController
 
         $teamId = $this->resolveTeamId($request);
         $email = strtolower($validated['email']);
+        $redirectUrl = $validated['redirect_url'];
 
         $rateLimitKey = 'sj-magic-link:' . $teamId . ':' . $email;
         $maxAttempts = config('syltjunkie.owner_auth.rate_limit_per_hour', 3);
@@ -48,43 +49,71 @@ class OwnerAuthController extends ApiController
 
         RateLimiter::hit($rateLimitKey, 3600);
 
-        // Entity per Slug aufloesen, falls mitgegeben
+        // Entity per Slug auflösen, falls mitgegeben
         $entityId = null;
         if (!empty($validated['entity_slug'])) {
             $entityId = SjEntity::where('team_id', $teamId)
                 ->where('slug', $validated['entity_slug'])
                 ->value('id');
+
+            // Ungültiger Slug → stille Antwort
+            if (!$entityId) {
+                return $this->success(null, 'Wir haben deine Anfrage erhalten.');
+            }
         }
 
-        $owner = SjEntityOwner::where('team_id', $teamId)
+        // Prüfen ob diese E-Mail bereits approved Einträge hat
+        $hasApproved = SjEntityOwner::where('team_id', $teamId)
             ->where('email', $email)
-            ->first();
+            ->approved()
+            ->exists();
 
-        if (!$owner) {
-            // Nur anlegen wenn Entity nicht schon einen approved Owner hat
-            $entityAlreadyClaimed = $entityId && SjEntityOwner::where('team_id', $teamId)
-                ->where('entity_id', $entityId)
+        if ($hasApproved) {
+            // Bereits freigegebener User → Magic Link senden
+            $owner = SjEntityOwner::where('team_id', $teamId)
+                ->where('email', $email)
                 ->approved()
-                ->exists();
+                ->first();
 
-            if (!$entityAlreadyClaimed) {
-                SjEntityOwner::create([
-                    'team_id' => $teamId,
-                    'email' => $email,
-                    'name' => $validated['name'] ?? null,
-                    'entity_id' => $entityId,
-                    'status' => 'pending',
-                ]);
-            }
-        } elseif ($owner->status === 'approved') {
-            // Bereits freigeschaltet: Magic Link senden
             $token = $owner->generateToken();
-            $redirectUrl = $validated['redirect_url'] ?? null;
             $mailable = new SjMagicLinkMail($owner, $token, $redirectUrl);
             if ($fromAddress) {
                 $mailable->from($fromAddress);
             }
-            Mail::to($owner->email)->send($mailable);
+            Mail::to($email)->send($mailable);
+
+            return $this->success(null, 'Wir haben deine Anfrage erhalten.');
+        }
+
+        // Kein entity_slug und keine existierenden Entities → verwerfen
+        if (!$entityId) {
+            return $this->success(null, 'Wir haben deine Anfrage erhalten.');
+        }
+
+        // Entity bereits von anderem Owner beansprucht?
+        $entityAlreadyClaimed = SjEntityOwner::where('team_id', $teamId)
+            ->where('entity_id', $entityId)
+            ->approved()
+            ->exists();
+
+        if ($entityAlreadyClaimed) {
+            return $this->success(null, 'Wir haben deine Anfrage erhalten.');
+        }
+
+        // Prüfen ob schon ein pending Eintrag für diese Kombination existiert
+        $existingPending = SjEntityOwner::where('team_id', $teamId)
+            ->where('email', $email)
+            ->where('entity_id', $entityId)
+            ->exists();
+
+        if (!$existingPending) {
+            SjEntityOwner::create([
+                'team_id' => $teamId,
+                'email' => $email,
+                'name' => $validated['name'] ?? null,
+                'entity_id' => $entityId,
+                'status' => 'pending',
+            ]);
         }
 
         // Immer gleiche Antwort, kein Info-Leak
@@ -99,9 +128,11 @@ class OwnerAuthController extends ApiController
         ]);
 
         $teamId = $this->resolveTeamId($request);
+        $email = strtolower($validated['email']);
 
+        // Irgendeinen approved Eintrag mit gültigem Token finden
         $owner = SjEntityOwner::where('team_id', $teamId)
-            ->where('email', strtolower($validated['email']))
+            ->where('email', $email)
             ->approved()
             ->first();
 
@@ -109,10 +140,15 @@ class OwnerAuthController extends ApiController
             return $this->error('Ungültiger oder abgelaufener Link.', null, 401);
         }
 
-        $owner->update(['last_login_at' => now()]);
+        // last_login_at auf allen Einträgen setzen
+        SjEntityOwner::where('team_id', $teamId)
+            ->where('email', $email)
+            ->approved()
+            ->update(['last_login_at' => now()]);
+
         $owner->clearToken();
 
-        $bearerToken = SjOwnerAuthenticate::generateBearerToken($owner);
+        $bearerToken = SjOwnerAuthenticate::generateBearerToken($email, $teamId);
 
         return $this->success([
             'token' => $bearerToken,

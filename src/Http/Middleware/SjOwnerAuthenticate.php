@@ -27,16 +27,18 @@ class SjOwnerAuthenticate
             return response()->json(['success' => false, 'message' => 'Token abgelaufen'], 401);
         }
 
-        $owner = SjEntityOwner::where('id', $payload['owner_id'])
-            ->where('team_id', $payload['team_id'])
+        // Prüfen ob mindestens ein approved-Eintrag existiert
+        $ownerExists = SjEntityOwner::where('team_id', $payload['team_id'])
+            ->where('email', $payload['email'])
             ->approved()
-            ->first();
+            ->exists();
 
-        if (!$owner || $owner->entity_id !== $payload['entity_id']) {
+        if (!$ownerExists) {
             return response()->json(['success' => false, 'message' => 'Nicht autorisiert'], 401);
         }
 
-        $request->attributes->set('sj_owner', $owner);
+        $request->attributes->set('sj_owner_email', $payload['email']);
+        $request->attributes->set('sj_owner_team_id', $payload['team_id']);
 
         return $next($request);
     }
@@ -59,19 +61,18 @@ class SjOwnerAuthenticate
 
         $payload = json_decode(base64_decode($payloadBase64), true);
 
-        if (!$payload || !isset($payload['owner_id'], $payload['entity_id'], $payload['team_id'], $payload['expires_at'])) {
+        if (!$payload || !isset($payload['email'], $payload['team_id'], $payload['expires_at'])) {
             return null;
         }
 
         return $payload;
     }
 
-    public static function generateBearerToken(SjEntityOwner $owner): string
+    public static function generateBearerToken(string $email, int $teamId): string
     {
         $payload = [
-            'owner_id' => $owner->id,
-            'entity_id' => $owner->entity_id,
-            'team_id' => $owner->team_id,
+            'email' => $email,
+            'team_id' => $teamId,
             'expires_at' => now()->addHours(
                 config('syltjunkie.owner_auth.session_ttl_hours', 24)
             )->timestamp,

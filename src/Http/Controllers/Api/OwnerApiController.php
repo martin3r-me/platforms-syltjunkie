@@ -5,35 +5,53 @@ namespace Platform\Syltjunkie\Http\Controllers\Api;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Platform\Core\Http\Controllers\ApiController;
+use Platform\Syltjunkie\Models\SjEntity;
 use Platform\Syltjunkie\Models\SjEntityOwner;
 
 class OwnerApiController extends ApiController
 {
-    protected function owner(Request $request): SjEntityOwner
+    protected function ownerEmail(Request $request): string
     {
-        return $request->attributes->get('sj_owner');
+        return $request->attributes->get('sj_owner_email');
+    }
+
+    protected function ownerTeamId(Request $request): int
+    {
+        return $request->attributes->get('sj_owner_team_id');
     }
 
     public function me(Request $request): JsonResponse
     {
-        $owner = $this->owner($request);
-        $owner->load('entity:id,name,slug');
+        $email = $this->ownerEmail($request);
+        $teamId = $this->ownerTeamId($request);
+
+        $owner = SjEntityOwner::where('team_id', $teamId)
+            ->where('email', $email)
+            ->approved()
+            ->first();
+
+        $entities = SjEntityOwner::entitiesForOwner($teamId, $email);
 
         return $this->success([
-            'email' => $owner->email,
-            'name' => $owner->name,
-            'entity_name' => $owner->entity?->name,
-            'last_login_at' => $owner->last_login_at?->toIso8601String(),
+            'email' => $email,
+            'name' => $owner?->name,
+            'last_login_at' => $owner?->last_login_at?->toIso8601String(),
+            'entities' => $entities->map(fn (SjEntity $entity) => [
+                'slug' => $entity->slug,
+                'name' => $entity->name,
+            ])->values(),
         ]);
     }
 
-    public function entity(Request $request): JsonResponse
+    public function entity(Request $request, string $slug): JsonResponse
     {
-        $owner = $this->owner($request);
-        $entity = $owner->entity;
+        $email = $this->ownerEmail($request);
+        $teamId = $this->ownerTeamId($request);
+
+        $entity = $this->resolveOwnedEntity($teamId, $email, $slug);
 
         if (!$entity) {
-            return $this->notFound('Keine Entity zugeordnet.');
+            return $this->notFound('Entity nicht gefunden oder kein Zugriff.');
         }
 
         $entity->load([
@@ -73,13 +91,15 @@ class OwnerApiController extends ApiController
         ]);
     }
 
-    public function updateEntity(Request $request): JsonResponse
+    public function updateEntity(Request $request, string $slug): JsonResponse
     {
-        $owner = $this->owner($request);
-        $entity = $owner->entity;
+        $email = $this->ownerEmail($request);
+        $teamId = $this->ownerTeamId($request);
+
+        $entity = $this->resolveOwnedEntity($teamId, $email, $slug);
 
         if (!$entity) {
-            return $this->notFound('Keine Entity zugeordnet.');
+            return $this->notFound('Entity nicht gefunden oder kein Zugriff.');
         }
 
         $validated = $request->validate([
@@ -92,5 +112,18 @@ class OwnerApiController extends ApiController
         $entity->update($validated);
 
         return $this->success(null, 'Entity aktualisiert.');
+    }
+
+    protected function resolveOwnedEntity(int $teamId, string $email, string $slug): ?SjEntity
+    {
+        $entityIds = SjEntityOwner::where('team_id', $teamId)
+            ->where('email', $email)
+            ->approved()
+            ->pluck('entity_id');
+
+        return SjEntity::where('team_id', $teamId)
+            ->where('slug', $slug)
+            ->whereIn('id', $entityIds)
+            ->first();
     }
 }

@@ -30,6 +30,11 @@ class EntityOwnerEditor extends Component
 
     public function save(): void
     {
+        if (!$this->entityId) {
+            session()->flash('error', 'Entity muss zugeordnet sein.');
+            return;
+        }
+
         $wasNotApproved = $this->owner->status !== 'approved';
 
         $this->owner->update([

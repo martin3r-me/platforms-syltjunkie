@@ -19,8 +19,8 @@ Route::post('/auth/verify', [OwnerAuthController::class, 'verify']);
 // Owner API (zusätzlich eigenes Bearer-Token via sj.owner.auth)
 Route::middleware('sj.owner.auth')->group(function () {
     Route::get('/owner/me', [OwnerApiController::class, 'me']);
-    Route::get('/owner/entity', [OwnerApiController::class, 'entity']);
-    Route::put('/owner/entity', [OwnerApiController::class, 'updateEntity']);
+    Route::get('/owner/entities/{slug}', [OwnerApiController::class, 'entity']);
+    Route::put('/owner/entities/{slug}', [OwnerApiController::class, 'updateEntity']);
 });
 
 Route::get('/entities', [EntityApiController::class, 'index']);

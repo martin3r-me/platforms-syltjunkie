@@ -62,15 +62,24 @@ class SjEntityOwner extends Model
         return $query->where('status', 'blocked');
     }
 
+    /**
+     * Generate a magic link token for this owner (sets on all rows for same email+team).
+     */
     public function generateToken(): string
     {
         $token = Str::random(64);
-        $this->update([
-            'token' => $token,
-            'token_expires_at' => now()->addMinutes(
-                config('syltjunkie.owner_auth.token_ttl_minutes', 30)
-            ),
-        ]);
+        $expiresAt = now()->addMinutes(config('syltjunkie.owner_auth.token_ttl_minutes', 30));
+
+        // Token auf allen Einträgen dieser E-Mail setzen
+        static::where('team_id', $this->team_id)
+            ->where('email', $this->email)
+            ->update([
+                'token' => $token,
+                'token_expires_at' => $expiresAt,
+            ]);
+
+        $this->token = $token;
+        $this->token_expires_at = $expiresAt;
 
         return $token;
     }
@@ -82,11 +91,32 @@ class SjEntityOwner extends Model
             && $this->token_expires_at->isFuture();
     }
 
+    /**
+     * Clear token on all rows for this email+team.
+     */
     public function clearToken(): void
     {
-        $this->update([
-            'token' => null,
-            'token_expires_at' => null,
-        ]);
+        static::where('team_id', $this->team_id)
+            ->where('email', $this->email)
+            ->update([
+                'token' => null,
+                'token_expires_at' => null,
+            ]);
+
+        $this->token = null;
+        $this->token_expires_at = null;
+    }
+
+    /**
+     * Get all entities this owner (email) has access to.
+     */
+    public static function entitiesForOwner(int $teamId, string $email): \Illuminate\Database\Eloquent\Collection
+    {
+        $entityIds = static::where('team_id', $teamId)
+            ->where('email', $email)
+            ->approved()
+            ->pluck('entity_id');
+
+        return SjEntity::whereIn('id', $entityIds)->get();
     }
 }

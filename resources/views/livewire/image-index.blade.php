@@ -66,6 +66,39 @@
                     </select>
                 </div>
 
+                {{-- Year Filter --}}
+                <div class="min-w-[100px]">
+                    <label class="block text-[11px] text-gray-400 uppercase tracking-wider mb-1">Jahr</label>
+                    <select wire:model.live="filterYear"
+                        class="w-full rounded-lg border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                        <option value="">Alle</option>
+                        @foreach($availableYears as $year)
+                            <option value="{{ $year }}">{{ $year }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Month Filter --}}
+                <div class="min-w-[100px]">
+                    <label class="block text-[11px] text-gray-400 uppercase tracking-wider mb-1">Monat</label>
+                    <select wire:model.live="filterMonth"
+                        class="w-full rounded-lg border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                        <option value="">Alle</option>
+                        <option value="1">Januar</option>
+                        <option value="2">Februar</option>
+                        <option value="3">März</option>
+                        <option value="4">April</option>
+                        <option value="5">Mai</option>
+                        <option value="6">Juni</option>
+                        <option value="7">Juli</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">Oktober</option>
+                        <option value="11">November</option>
+                        <option value="12">Dezember</option>
+                    </select>
+                </div>
+
                 {{-- Upload --}}
                 <div x-data="{ dragging: false }" class="min-w-[200px]">
                     <label class="block text-[11px] text-gray-400 uppercase tracking-wider mb-1">Upload</label>
@@ -183,6 +216,9 @@
                             <div x-show="!editing" @dblclick="editing = true" class="text-[13px] font-medium text-gray-900 truncate cursor-pointer" title="Doppelklick zum Bearbeiten">
                                 {{ $image->title ?: 'Ohne Titel' }}
                             </div>
+                            @if($image->taken_at)
+                                <div class="text-[11px] text-gray-400">{{ $image->taken_at->translatedFormat('M Y') }}</div>
+                            @endif
                             <div x-show="editing" x-cloak>
                                 <input type="text" x-model="editTitle" @keydown.enter="$wire.updateTitle({{ $image->id }}, editTitle); editing = false"
                                     @keydown.escape="editing = false" x-ref="titleInput" @focus="$el.select()"

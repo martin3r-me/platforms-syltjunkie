@@ -16,6 +16,8 @@ class ImageIndex extends Component
     public string $search = '';
     public string $filterTag = '';
     public string $filterUsage = '';
+    public ?int $filterYear = null;
+    public ?int $filterMonth = null;
     public string $viewMode = 'grid';
     public $pendingUploads = [];
 
@@ -30,6 +32,16 @@ class ImageIndex extends Component
     }
 
     public function updatingFilterUsage(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterYear(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterMonth(): void
     {
         $this->resetPage();
     }
@@ -198,7 +210,15 @@ class ImageIndex extends Component
             });
         }
 
-        $images = $query->orderByDesc('created_at')->paginate(24);
+        if ($this->filterYear) {
+            $query->whereYear('taken_at', $this->filterYear);
+        }
+
+        if ($this->filterMonth) {
+            $query->whereMonth('taken_at', $this->filterMonth);
+        }
+
+        $images = $query->orderByDesc('taken_at')->paginate(24);
 
         // Alle verwendeten Tags für Filter-Dropdown sammeln
         $allTags = SjImage::where('team_id', $team->id)
@@ -210,6 +230,14 @@ class ImageIndex extends Component
             ->values();
 
         $totalCount = SjImage::where('team_id', $team->id)->count();
+
+        // Verfügbare Jahre für Filter
+        $availableYears = SjImage::where('team_id', $team->id)
+            ->whereNotNull('taken_at')
+            ->selectRaw('YEAR(taken_at) as year')
+            ->distinct()
+            ->orderByDesc('year')
+            ->pluck('year');
 
         // Geo-tagged images for map (all, not paginated)
         $mapImages = [];
@@ -252,6 +280,7 @@ class ImageIndex extends Component
         return view('syltjunkie::livewire.image-index', [
             'images' => $images,
             'allTags' => $allTags,
+            'availableYears' => $availableYears,
             'totalCount' => $totalCount,
             'mapImages' => $mapImages,
             'geoCount' => $geoCount,

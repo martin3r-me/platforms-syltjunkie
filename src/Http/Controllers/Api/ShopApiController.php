@@ -25,6 +25,7 @@ class ShopApiController extends ApiController
             ->active()
             ->with([
                 'variants' => fn ($q) => $q->where('is_active', true),
+                'dimensions' => fn ($q) => $q->orderBy('sort_order'),
                 'primaryImage.contextFile.variants',
             ]);
 
@@ -61,6 +62,7 @@ class ShopApiController extends ApiController
             'currency' => $product->currency,
             'is_featured' => $product->is_featured,
             'in_stock' => $product->in_stock,
+            'variant_dimensions' => $product->dimensions->pluck('name')->values(),
             'primary_image' => $this->formatImage($product->primaryImage->first()),
             'variants' => $product->variants->map(fn ($v) => [
                 'id' => $v->id,
@@ -68,6 +70,7 @@ class ShopApiController extends ApiController
                 'sku' => $v->sku,
                 'price_cents' => $v->effective_price_cents,
                 'stock_quantity' => $v->stock_quantity,
+                'available' => $v->stock_quantity === null || $v->stock_quantity > 0,
                 'options' => $v->options,
                 'is_active' => $v->is_active,
             ])->values(),
@@ -86,6 +89,7 @@ class ShopApiController extends ApiController
             ->active()
             ->with([
                 'variants' => fn ($q) => $q->where('is_active', true),
+                'dimensions' => fn ($q) => $q->orderBy('sort_order'),
                 'images.contextFile.variants',
             ])
             ->first();
@@ -107,6 +111,7 @@ class ShopApiController extends ApiController
             'currency' => $product->currency,
             'is_featured' => $product->is_featured,
             'in_stock' => $product->in_stock,
+            'variant_dimensions' => $product->dimensions->pluck('name')->values(),
             'images' => $product->images->map(fn ($img) => [
                 'id' => $img->id,
                 'url' => $img->url,
@@ -120,6 +125,7 @@ class ShopApiController extends ApiController
                 'sku' => $v->sku,
                 'price_cents' => $v->effective_price_cents,
                 'stock_quantity' => $v->stock_quantity,
+                'available' => $v->stock_quantity === null || $v->stock_quantity > 0,
                 'options' => $v->options,
                 'is_active' => $v->is_active,
             ])->values(),

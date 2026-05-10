@@ -14,15 +14,22 @@ class SjMagicLinkMail extends Mailable
     public SjEntityOwner $owner;
     public string $magicLink;
 
-    public function __construct(SjEntityOwner $owner, string $token)
+    public function __construct(SjEntityOwner $owner, string $token, ?string $redirectUrl = null)
     {
         $this->owner = $owner;
 
         $frontendUrl = rtrim(config('syltjunkie.owner_auth.frontend_url', 'https://syltjunkie.de'), '/');
-        $this->magicLink = $frontendUrl . '/auth/verify?' . http_build_query([
+
+        $params = [
             'email' => $owner->email,
             'token' => $token,
-        ]);
+        ];
+
+        if ($redirectUrl) {
+            $params['redirect'] = $redirectUrl;
+        }
+
+        $this->magicLink = $frontendUrl . '/auth/verify?' . http_build_query($params);
     }
 
     public function build(): self

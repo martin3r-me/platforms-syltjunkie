@@ -23,6 +23,7 @@ class OwnerAuthController extends ApiController
             'email' => 'required|email|max:255',
             'name' => 'nullable|string|max:255',
             'entity_slug' => 'nullable|string|max:255',
+            'redirect_url' => 'nullable|url|max:500',
         ]);
 
         $teamId = $this->resolveTeamId($request);
@@ -61,7 +62,8 @@ class OwnerAuthController extends ApiController
         } elseif ($owner->status === 'approved') {
             // Bereits freigeschaltet: Magic Link senden
             $token = $owner->generateToken();
-            Mail::to($owner->email)->send(new SjMagicLinkMail($owner, $token));
+            $redirectUrl = $validated['redirect_url'] ?? null;
+            Mail::to($owner->email)->send(new SjMagicLinkMail($owner, $token, $redirectUrl));
         }
 
         // Immer gleiche Antwort, kein Info-Leak

@@ -11,7 +11,7 @@ return new class extends Migration
         // --- sj_entities: JSON geometry → native GEOMETRY ---
         DB::statement('ALTER TABLE sj_entities ADD COLUMN geo GEOMETRY SRID 4326 NULL AFTER geometry');
 
-        DB::statement('UPDATE sj_entities SET geo = ST_GeomFromGeoJSON(geometry, 1, 4326) WHERE geometry IS NOT NULL');
+        DB::statement('UPDATE sj_entities SET geo = ST_GeomFromGeoJSON(CAST(geometry AS CHAR), 1, 4326) WHERE geometry IS NOT NULL');
 
         Schema::table('sj_entities', function ($table) {
             $table->dropColumn('geometry');

@@ -220,6 +220,12 @@ class SyltjunkieServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Syltjunkie\Tools\GetContentBlocksTool());
             $registry->register(new \Platform\Syltjunkie\Tools\UpdateContentBlockTool());
 
+            // Images
+            $registry->register(new \Platform\Syltjunkie\Tools\ListImagesTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\GetImageTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\UpdateImageTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\ManageEntityImagesTool());
+
             // Pipeline (Entity Kanban)
             $registry->register(new \Platform\Syltjunkie\Tools\ListPipelineSlotsTool());
             $registry->register(new \Platform\Syltjunkie\Tools\ListPipelineCardsTool());

@@ -12,6 +12,7 @@ use Platform\Syltjunkie\Models\SjKeywordRanking;
 use Platform\Syltjunkie\Models\SjPageChange;
 use Platform\Syltjunkie\Models\SjChannelPost;
 use Platform\Syltjunkie\Models\SjTrendSignal;
+use Platform\Syltjunkie\Models\SjWeather;
 
 class EntityDetail extends Component
 {
@@ -27,14 +28,14 @@ class EntityDetail extends Component
     {
         abort_unless($entity->team_id === Auth::user()->currentTeam->id, 403);
         $this->entity = $entity;
-        $this->geometry = $entity->geometry;
+        $this->geometry = $entity->getGeometryGeoJson();
         $this->editLatitude = $entity->latitude ? (float) $entity->latitude : null;
         $this->editLongitude = $entity->longitude ? (float) $entity->longitude : null;
     }
 
     public function saveGeometry(?array $geometry): void
     {
-        $this->entity->update(['geometry' => $geometry]);
+        $this->entity->setGeometry($geometry);
         $this->geometry = $geometry;
     }
 
@@ -161,6 +162,16 @@ class EntityDetail extends Component
             ->limit(10)
             ->get();
 
+        $currentWeather = SjWeather::forEntity($this->entity->id)
+            ->current()
+            ->where('date', today())
+            ->first();
+
+        $weatherForecast = SjWeather::forEntity($this->entity->id)
+            ->forecast()
+            ->orderBy('date')
+            ->get();
+
         return view('syltjunkie::livewire.entity-detail', [
             'entity' => $this->entity,
             'keywordRankings' => $keywordRankings,
@@ -168,6 +179,8 @@ class EntityDetail extends Component
             'entitySignals' => $entitySignals,
             'entityImages' => $entityImages,
             'entityPosts' => $entityPosts,
+            'currentWeather' => $currentWeather,
+            'weatherForecast' => $weatherForecast,
         ])->layout('platform::layouts.app');
     }
 }

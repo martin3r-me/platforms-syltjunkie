@@ -161,6 +161,58 @@
             </div>
             @endif
 
+            {{-- Weather Widget --}}
+            @if($currentWeather || $weatherForecast->count())
+            <div class="bg-white rounded-lg border border-gray-200 p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-[13px] font-semibold text-gray-700">Wetter</h2>
+                    <a href="{{ route('syltjunkie.weather.index') }}" class="text-[11px] text-blue-600 hover:text-blue-800">Alle Orte</a>
+                </div>
+
+                @if($currentWeather)
+                <div class="flex items-center gap-4 mb-3">
+                    @if($currentWeather->icon)
+                        <span>@include('syltjunkie::livewire.partials.weather-icon', ['icon' => $currentWeather->icon])</span>
+                    @endif
+                    <div>
+                        <span class="text-2xl font-bold text-gray-900 tabular-nums">{{ $currentWeather->temperature_avg !== null ? number_format($currentWeather->temperature_avg, 0) . '°C' : '--' }}</span>
+                        @if($currentWeather->condition)
+                            <span class="text-[12px] text-gray-500 ml-2">{{ ucfirst($currentWeather->condition) }}</span>
+                        @endif
+                    </div>
+                    <div class="ml-auto flex items-center gap-4 text-[11px] text-gray-400">
+                        @if($currentWeather->wind_speed_avg !== null)
+                            <span>Wind {{ number_format($currentWeather->wind_speed_avg, 0) }} km/h</span>
+                        @endif
+                        @if($currentWeather->precipitation_mm !== null && $currentWeather->precipitation_mm > 0)
+                            <span class="text-blue-500">{{ number_format($currentWeather->precipitation_mm, 1) }} mm</span>
+                        @endif
+                        @if($currentWeather->sunshine_hours !== null)
+                            <span class="text-yellow-500">{{ number_format($currentWeather->sunshine_hours, 1) }}h Sonne</span>
+                        @endif
+                    </div>
+                </div>
+                @endif
+
+                @if($weatherForecast->count())
+                <div class="flex gap-2 overflow-x-auto pt-2 border-t border-gray-100">
+                    @foreach($weatherForecast->take(7) as $day)
+                    <div class="flex-shrink-0 text-center px-2 py-1.5 rounded-lg {{ $loop->first ? 'bg-blue-50' : '' }}" style="min-width: 60px;">
+                        <div class="text-[10px] text-gray-400 uppercase">{{ $day->date->locale('de')->isoFormat('dd') }}</div>
+                        <div class="my-1">
+                            @if($day->icon)
+                                @include('syltjunkie::livewire.partials.weather-icon', ['icon' => $day->icon])
+                            @endif
+                        </div>
+                        <div class="text-[12px] font-medium text-gray-900 tabular-nums">{{ $day->temperature_max !== null ? number_format($day->temperature_max, 0) . '°' : '--' }}</div>
+                        <div class="text-[10px] text-gray-400 tabular-nums">{{ $day->temperature_min !== null ? number_format($day->temperature_min, 0) . '°' : '' }}</div>
+                    </div>
+                    @endforeach
+                </div>
+                @endif
+            </div>
+            @endif
+
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {{-- Main Content --}}
                 <div class="lg:col-span-2 space-y-6">

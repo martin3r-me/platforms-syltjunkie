@@ -17,6 +17,7 @@ use Platform\Syltjunkie\Livewire\ChannelPostIndex;
 use Platform\Syltjunkie\Livewire\ContentPieceIndex;
 use Platform\Syltjunkie\Livewire\ContentPieceEditor;
 use Platform\Syltjunkie\Livewire\ChannelPostComposer;
+use Platform\Syltjunkie\Livewire\WeatherIndex;
 
 Route::get('/', Dashboard::class)->name('syltjunkie.dashboard');
 Route::get('/entities', EntityIndex::class)->name('syltjunkie.entities.index');
@@ -36,3 +37,4 @@ Route::get('/content/create', ContentPieceEditor::class)->name('syltjunkie.conte
 Route::get('/content/{contentPiece}/edit', ContentPieceEditor::class)->name('syltjunkie.content.edit');
 Route::get('/posts', ChannelPostIndex::class)->name('syltjunkie.posts.index');
 Route::get('/posts/create', ChannelPostComposer::class)->name('syltjunkie.posts.create');
+Route::get('/weather', WeatherIndex::class)->name('syltjunkie.weather.index');

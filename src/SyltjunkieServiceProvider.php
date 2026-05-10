@@ -69,6 +69,7 @@ class SyltjunkieServiceProvider extends ServiceProvider
                 \Platform\Syltjunkie\Console\Commands\DiscoverKeywords::class,
                 \Platform\Syltjunkie\Console\Commands\FetchGoogleTrends::class,
                 \Platform\Syltjunkie\Console\Commands\MatchNearbyImages::class,
+                \Platform\Syltjunkie\Console\Commands\FetchWeather::class,
             ]);
         }
 
@@ -110,6 +111,12 @@ class SyltjunkieServiceProvider extends ServiceProvider
             // Keyword Discovery: monthly, expand seeds + detect opportunities
             $schedule->command('syltjunkie:discover-keywords --detect-opportunities')
                 ->monthlyOn(1, '06:00')
+                ->withoutOverlapping()
+                ->runInBackground();
+
+            // Weather: daily, fetch current + 7-day forecast from Bright Sky (DWD)
+            $schedule->command('syltjunkie:fetch-weather')
+                ->dailyAt('05:30')
                 ->withoutOverlapping()
                 ->runInBackground();
 

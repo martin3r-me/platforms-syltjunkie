@@ -50,6 +50,14 @@ return [
         ],
     ],
 
+    'weather' => [
+        'enabled' => env('SYLTJUNKIE_WEATHER_ENABLED', true),
+        'api_base_url' => 'https://api.brightsky.dev',
+        'forecast_days' => 7,
+        'request_delay_ms' => 1000,
+        'retention_days' => 365,
+    ],
+
     'sidebar' => [
         [
             'group' => 'Entity Graph',

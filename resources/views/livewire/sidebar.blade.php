@@ -50,6 +50,10 @@
             @svg('heroicon-o-map', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Karte</span>
         </x-ui-sidebar-item>
+        <x-ui-sidebar-item :href="route('syltjunkie.weather.index')">
+            @svg('heroicon-o-sun', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Wetter</span>
+        </x-ui-sidebar-item>
     </x-ui-sidebar-list>
 
     {{-- Media --}}
@@ -102,6 +106,9 @@
             </a>
             <a href="{{ route('syltjunkie.map.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Karte">
                 @svg('heroicon-o-map', 'w-5 h-5')
+            </a>
+            <a href="{{ route('syltjunkie.weather.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Wetter">
+                @svg('heroicon-o-sun', 'w-5 h-5')
             </a>
             <a href="{{ route('syltjunkie.images.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Bilddatenbank">
                 @svg('heroicon-o-photo', 'w-5 h-5')

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Symfony\Component\Uid\UuidV7;
 
@@ -25,7 +26,6 @@ class SjEntity extends Model
         'description',
         'latitude',
         'longitude',
-        'geometry',
         'season',
         'status',
         'source',
@@ -38,7 +38,6 @@ class SjEntity extends Model
         'extra_fields' => 'array',
         'latitude' => 'float',
         'longitude' => 'float',
-        'geometry' => 'array',
     ];
 
     protected static function booted(): void
@@ -55,6 +54,30 @@ class SjEntity extends Model
                 $model->slug = Str::slug($model->name);
             }
         });
+    }
+
+    public function setGeometry(?array $geoJson): void
+    {
+        if ($geoJson) {
+            DB::statement(
+                'UPDATE sj_entities SET geometry = ST_GeomFromGeoJSON(?, 1, 4326) WHERE id = ?',
+                [json_encode($geoJson), $this->id]
+            );
+        } else {
+            DB::statement('UPDATE sj_entities SET geometry = NULL WHERE id = ?', [$this->id]);
+        }
+    }
+
+    public function getGeometryGeoJson(): ?array
+    {
+        $row = DB::selectOne('SELECT ST_AsGeoJSON(geometry) as geo FROM sj_entities WHERE id = ?', [$this->id]);
+
+        return $row?->geo ? json_decode($row->geo, true) : null;
+    }
+
+    public function hasGeometry(): bool
+    {
+        return DB::selectOne('SELECT geometry IS NOT NULL as has_geo FROM sj_entities WHERE id = ?', [$this->id])?->has_geo ?? false;
     }
 
     public function ortEntity(): ?self
@@ -145,6 +168,11 @@ class SjEntity extends Model
     public function channelPosts(): HasMany
     {
         return $this->hasMany(SjChannelPost::class, 'entity_id');
+    }
+
+    public function weather(): HasMany
+    {
+        return $this->hasMany(SjWeather::class, 'entity_id');
     }
 
     public function events(): HasMany

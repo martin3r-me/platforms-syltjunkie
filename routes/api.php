@@ -6,6 +6,7 @@ use Platform\Syltjunkie\Http\Controllers\Api\EntityApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\EntityTypeApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\LandingApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\MapApiController;
+use Platform\Syltjunkie\Http\Controllers\Api\WeatherApiController;
 
 Route::get('/entities', [EntityApiController::class, 'index']);
 Route::get('/entities/{slug}', [EntityApiController::class, 'show']);
@@ -17,3 +18,5 @@ Route::get('/landing', [LandingApiController::class, 'index']);
 Route::get('/content', [ContentApiController::class, 'index']);
 Route::get('/content/{slug}', [ContentApiController::class, 'show']);
 Route::get('/map', [MapApiController::class, 'index']);
+Route::get('/weather', [WeatherApiController::class, 'index']);
+Route::get('/weather/{slug}', [WeatherApiController::class, 'show']);

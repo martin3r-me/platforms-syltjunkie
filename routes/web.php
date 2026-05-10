@@ -24,6 +24,7 @@ use Platform\Syltjunkie\Livewire\ShopOrderIndex;
 use Platform\Syltjunkie\Livewire\ShopOrderDetail;
 use Platform\Syltjunkie\Livewire\EntityOwnerIndex;
 use Platform\Syltjunkie\Livewire\EntityOwnerEditor;
+use Platform\Syltjunkie\Livewire\PipelineBoard;
 
 Route::get('/', Dashboard::class)->name('syltjunkie.dashboard');
 Route::get('/entities', EntityIndex::class)->name('syltjunkie.entities.index');
@@ -51,3 +52,4 @@ Route::get('/shop/orders', ShopOrderIndex::class)->name('syltjunkie.shop.orders.
 Route::get('/shop/orders/{order}', ShopOrderDetail::class)->name('syltjunkie.shop.orders.detail');
 Route::get('/owners', EntityOwnerIndex::class)->name('syltjunkie.owners.index');
 Route::get('/owners/{owner}/edit', EntityOwnerEditor::class)->name('syltjunkie.owners.edit');
+Route::get('/pipeline', PipelineBoard::class)->name('syltjunkie.pipeline.index');

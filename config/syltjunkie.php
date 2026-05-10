@@ -83,6 +83,11 @@ return [
                     'icon'  => 'heroicon-o-globe-alt',
                 ],
                 [
+                    'label' => 'Pipeline',
+                    'route' => 'syltjunkie.pipeline.index',
+                    'icon'  => 'heroicon-o-funnel',
+                ],
+                [
                     'label' => 'Entities',
                     'route' => 'syltjunkie.entities.index',
                     'icon'  => 'heroicon-o-building-storefront',

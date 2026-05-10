@@ -25,6 +25,8 @@ class SjEntity extends Model
         'name',
         'slug',
         'description',
+        'seo_title',
+        'seo_description',
         'latitude',
         'longitude',
         'season',

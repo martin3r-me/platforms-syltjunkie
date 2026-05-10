@@ -170,6 +170,8 @@ class EntityApiController extends ApiController
             'slug' => $entity->slug,
             'name' => $entity->name,
             'description' => $entity->description,
+            'seo_title' => $entity->seo_title,
+            'seo_description' => $entity->seo_description,
             'ort' => $ortRelationship?->targetEntity?->name,
             'lat' => $entity->latitude,
             'lng' => $entity->longitude,

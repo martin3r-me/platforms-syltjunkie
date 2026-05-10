@@ -40,6 +40,8 @@ class UpdateEntityTool implements ToolContract, ToolMetadataContract
                 'name' => ['type' => 'string', 'description' => 'Optional: Neuer Name.'],
                 'slug' => ['type' => 'string', 'description' => 'Optional: Neuer Slug.'],
                 'description' => ['type' => 'string', 'description' => 'Optional: Neue Beschreibung.'],
+                'seo_title' => ['type' => 'string', 'description' => 'Optional: SEO-Titel (max ~60 Zeichen, Keyword vorne).'],
+                'seo_description' => ['type' => 'string', 'description' => 'Optional: SEO-Beschreibung (max ~160 Zeichen, mit CTA).'],
                 'ort' => ['type' => 'string', 'description' => 'Optional: Neuer Ort (aktualisiert die lokalisiert_in-Beziehung).'],
                 'latitude' => ['type' => 'number', 'description' => 'Optional: Breitengrad.'],
                 'longitude' => ['type' => 'number', 'description' => 'Optional: Längengrad.'],
@@ -77,7 +79,7 @@ class UpdateEntityTool implements ToolContract, ToolMetadataContract
                 return ToolResult::error('NOT_FOUND', 'Entity nicht gefunden.');
             }
 
-            $updatable = ['name', 'slug', 'description', 'latitude', 'longitude', 'season', 'status', 'source', 'is_active'];
+            $updatable = ['name', 'slug', 'description', 'seo_title', 'seo_description', 'latitude', 'longitude', 'season', 'status', 'source', 'is_active'];
             foreach ($updatable as $field) {
                 if (array_key_exists($field, $arguments)) {
                     $entity->{$field} = $arguments[$field];

@@ -107,7 +107,6 @@
                             class="w-full rounded-lg border border-gray-200 px-3 py-2 text-[13px] focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
                             <option value="instagram">Instagram</option>
                             <option value="facebook">Facebook</option>
-                            <option value="website">Website</option>
                         </select>
                     </div>
 

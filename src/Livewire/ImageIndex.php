@@ -34,6 +34,8 @@ class ImageIndex extends Component
         $this->resetPage();
     }
 
+    public array $uploadErrors = [];
+
     public function uploadImages(): void
     {
         $this->validate([
@@ -43,8 +45,25 @@ class ImageIndex extends Component
 
         $team = Auth::user()->currentTeam;
         $service = app(ContextFileService::class);
+        $this->uploadErrors = [];
+        $uploaded = 0;
 
         foreach ($this->pendingUploads as $file) {
+            $fileName = $file->getClientOriginalName();
+
+            // EXIF pruefen: GPS + Datum muessen vorhanden sein
+            $exif = @exif_read_data($file->getRealPath());
+            $hasGps = isset($exif['GPSLatitude'], $exif['GPSLongitude']);
+            $takenAt = $this->extractTakenAt($exif);
+
+            if (!$hasGps || !$takenAt) {
+                $missing = [];
+                if (!$hasGps) $missing[] = 'GPS-Koordinaten';
+                if (!$takenAt) $missing[] = 'Aufnahmedatum';
+                $this->uploadErrors[] = "{$fileName}: " . implode(' und ', $missing) . ' fehlt.';
+                continue;
+            }
+
             $result = $service->uploadForContext(
                 $file,
                 SjImage::class,
@@ -65,11 +84,41 @@ class ImageIndex extends Component
                 'context_file_id' => $result['id'],
                 'latitude' => $meta['gps']['latitude'] ?? null,
                 'longitude' => $meta['gps']['longitude'] ?? null,
-                'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
+                'taken_at' => $takenAt,
+                'title' => pathinfo($fileName, PATHINFO_FILENAME),
             ]);
+
+            $uploaded++;
         }
 
         $this->pendingUploads = [];
+
+        if ($uploaded > 0 && empty($this->uploadErrors)) {
+            session()->flash('success', "{$uploaded} Bild(er) hochgeladen.");
+        } elseif ($uploaded > 0) {
+            session()->flash('success', "{$uploaded} Bild(er) hochgeladen, einige abgelehnt.");
+        }
+    }
+
+    protected function extractTakenAt(?array $exif): ?string
+    {
+        if (!$exif) {
+            return null;
+        }
+
+        // EXIF DateTimeOriginal ist das primaere Feld
+        $dateStr = $exif['DateTimeOriginal'] ?? $exif['DateTimeDigitized'] ?? $exif['DateTime'] ?? null;
+
+        if (!$dateStr) {
+            return null;
+        }
+
+        // Format: "2024:03:15 14:30:00" → "2024-03-15"
+        try {
+            return \Carbon\Carbon::createFromFormat('Y:m:d H:i:s', $dateStr)->toDateString();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     public function deleteImage(int $id): void

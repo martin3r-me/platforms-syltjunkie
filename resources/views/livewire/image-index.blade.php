@@ -94,6 +94,18 @@
                 @endif
             </div>
 
+            {{-- Upload Errors --}}
+            @if(!empty($uploadErrors))
+                <div class="rounded-md border border-red-200 bg-red-50 p-3">
+                    <p class="text-[12px] font-medium text-red-800 mb-1">Abgelehnte Bilder (GPS + Aufnahmedatum erforderlich):</p>
+                    <ul class="text-[12px] text-red-700 space-y-0.5">
+                        @foreach($uploadErrors as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             {{-- Map View --}}
             @if($viewMode === 'map')
             <div

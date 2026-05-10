@@ -192,6 +192,12 @@ class SyltjunkieServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Syltjunkie\Tools\ListChannelPostsTool());
             $registry->register(new \Platform\Syltjunkie\Tools\CreateChannelPostTool());
             $registry->register(new \Platform\Syltjunkie\Tools\PublishChannelPostTool());
+
+            // Shop
+            $registry->register(new \Platform\Syltjunkie\Tools\ListShopProductsTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\CreateShopProductTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\UpdateShopProductTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\ListShopOrdersTool());
         } catch (\Throwable $e) {}
     }
 

@@ -19,26 +19,22 @@ return new class extends Migration
 
         DB::statement('ALTER TABLE sj_entities CHANGE geo geometry GEOMETRY SRID 4326 NULL');
 
-        DB::statement('ALTER TABLE sj_entities ADD SPATIAL INDEX idx_sj_entities_geometry (geometry)');
-
         // --- sj_images: add location POINT ---
         DB::statement('ALTER TABLE sj_images ADD COLUMN location POINT SRID 4326 NULL AFTER longitude');
 
         DB::statement('UPDATE sj_images SET location = ST_SRID(POINT(longitude, latitude), 4326) WHERE latitude IS NOT NULL AND longitude IS NOT NULL');
 
-        DB::statement('ALTER TABLE sj_images ADD SPATIAL INDEX idx_sj_images_location (location)');
+        // Spatial indexes require NOT NULL — skip for nullable columns
     }
 
     public function down(): void
     {
         // --- sj_images: drop location ---
         Schema::table('sj_images', function ($table) {
-            $table->dropIndex('idx_sj_images_location');
             $table->dropColumn('location');
         });
 
         // --- sj_entities: native GEOMETRY → JSON geometry ---
-        DB::statement('ALTER TABLE sj_entities DROP INDEX idx_sj_entities_geometry');
 
         DB::statement('ALTER TABLE sj_entities ADD COLUMN geo_json JSON NULL AFTER geometry');
 

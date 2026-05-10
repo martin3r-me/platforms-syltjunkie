@@ -48,16 +48,16 @@ class MatchNearbyImages extends Command
             $this->info('DRY-RUN mode — no changes will be made.');
         }
 
-        $query = SjEntity::whereNotNull('latitude')
-            ->whereNotNull('longitude')
-            ->where('is_active', true)
-            ->with('entityType:id,code');
-
         if ($entityId) {
-            $query->where('id', $entityId);
+            $entities = SjEntity::whereNotNull('latitude')
+                ->whereNotNull('longitude')
+                ->where('is_active', true)
+                ->where('id', $entityId)
+                ->with('entityType:id,code')
+                ->get();
+        } else {
+            $entities = $this->loadPrioritizedEntities($maxEntities);
         }
-
-        $entities = $query->limit($maxEntities)->get();
 
         $this->info("Processing {$entities->count()} entities...");
 
@@ -71,6 +71,93 @@ class MatchNearbyImages extends Command
         $this->info("Done. Total new matches: {$totalMatched}");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Load entities in priority order:
+     * 1. Never geo-matched (no pivot rows with source=geo_matched)
+     * 2. Have new images in radius since last match
+     * 3. Oldest last-matched first (rotating)
+     */
+    protected function loadPrioritizedEntities(int $limit): \Illuminate\Support\Collection
+    {
+        $baseConditions = fn ($q) => $q->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->where('is_active', true)
+            ->with('entityType:id,code');
+
+        // Subquery: last geo_match timestamp per entity
+        $lastMatchSub = DB::table('sj_image_entity')
+            ->select('entity_id', DB::raw('MAX(created_at) as last_matched_at'))
+            ->where('source', 'geo_matched')
+            ->groupBy('entity_id');
+
+        // Priority 1: Entities never geo-matched
+        $neverMatched = SjEntity::whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->where('is_active', true)
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('sj_image_entity')
+                    ->whereColumn('sj_image_entity.entity_id', 'sj_entities.id')
+                    ->where('source', 'geo_matched');
+            })
+            ->with('entityType:id,code')
+            ->limit($limit)
+            ->get();
+
+        $remaining = $limit - $neverMatched->count();
+        if ($remaining <= 0) {
+            $this->line("Priority: {$neverMatched->count()} never-matched entities");
+            return $neverMatched;
+        }
+
+        $excludeIds = $neverMatched->pluck('id');
+
+        // Priority 2: Entities with new images since last match
+        // (images.created_at > last geo_match created_at for that entity)
+        $withNewImages = SjEntity::whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->where('is_active', true)
+            ->whereNotIn('id', $excludeIds)
+            ->whereExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('sj_images')
+                    ->whereColumn('sj_images.team_id', 'sj_entities.team_id')
+                    ->whereNotNull('sj_images.latitude')
+                    ->whereNotNull('sj_images.longitude')
+                    ->where('sj_images.created_at', '>', function ($sub) {
+                        $sub->select(DB::raw('COALESCE(MAX(pie.created_at), \'1970-01-01\')'))
+                            ->from('sj_image_entity as pie')
+                            ->whereColumn('pie.entity_id', 'sj_entities.id')
+                            ->where('pie.source', 'geo_matched');
+                    });
+            })
+            ->with('entityType:id,code')
+            ->limit($remaining)
+            ->get();
+
+        $remaining -= $withNewImages->count();
+        $excludeIds = $excludeIds->merge($withNewImages->pluck('id'));
+
+        // Priority 3: Oldest last-matched first (rotating backfill)
+        $rotating = collect();
+        if ($remaining > 0) {
+            $rotating = SjEntity::whereNotNull('latitude')
+                ->whereNotNull('longitude')
+                ->where('is_active', true)
+                ->whereNotIn('id', $excludeIds)
+                ->leftJoinSub($lastMatchSub, 'lm', 'lm.entity_id', '=', 'sj_entities.id')
+                ->orderBy('lm.last_matched_at', 'asc')
+                ->select('sj_entities.*')
+                ->with('entityType:id,code')
+                ->limit($remaining)
+                ->get();
+        }
+
+        $this->line("Priority: {$neverMatched->count()} never-matched, {$withNewImages->count()} new-images, {$rotating->count()} rotating");
+
+        return $neverMatched->concat($withNewImages)->concat($rotating);
     }
 
     protected function matchEntity(SjEntity $entity, bool $isDryRun): int

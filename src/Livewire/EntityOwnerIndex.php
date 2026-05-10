@@ -38,7 +38,7 @@ class EntityOwnerIndex extends Component
 
         // Magic Link direkt senden
         $token = $owner->generateToken();
-        SjMailService::sendMagicLink($owner, $token);
+        SjMailService::sendMagicLink($owner, $token, null, $owner->from_address);
     }
 
     public function block(int $ownerId): void

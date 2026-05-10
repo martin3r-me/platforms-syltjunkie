@@ -74,6 +74,14 @@ class OwnerAuthController extends ApiController
                 ->approved()
                 ->first();
 
+            // from_address speichern für spätere Backend-Nutzung
+            if ($fromAddress && $owner->from_address !== $fromAddress) {
+                SjEntityOwner::where('team_id', $teamId)
+                    ->where('email', $email)
+                    ->update(['from_address' => $fromAddress]);
+                $owner->from_address = $fromAddress;
+            }
+
             $token = $owner->generateToken();
             SjMailService::sendMagicLink($owner, $token, $redirectUrl, $fromAddress);
 
@@ -108,6 +116,7 @@ class OwnerAuthController extends ApiController
                 'name' => $validated['name'] ?? null,
                 'entity_id' => $entityId,
                 'status' => 'pending',
+                'from_address' => $fromAddress,
             ]);
         }
 

@@ -24,6 +24,7 @@ class SjEntityOwner extends Model
         'approved_at',
         'approved_by',
         'notes',
+        'from_address',
     ];
 
     protected $casts = [

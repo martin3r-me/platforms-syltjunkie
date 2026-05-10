@@ -51,14 +51,21 @@ class OwnerAuthController extends ApiController
             ->first();
 
         if (!$owner) {
-            // Neu: pending-Eintrag mit Entity-Wunsch anlegen
-            SjEntityOwner::create([
-                'team_id' => $teamId,
-                'email' => $email,
-                'name' => $validated['name'] ?? null,
-                'entity_id' => $entityId,
-                'status' => 'pending',
-            ]);
+            // Nur anlegen wenn Entity nicht schon einen approved Owner hat
+            $entityAlreadyClaimed = $entityId && SjEntityOwner::where('team_id', $teamId)
+                ->where('entity_id', $entityId)
+                ->approved()
+                ->exists();
+
+            if (!$entityAlreadyClaimed) {
+                SjEntityOwner::create([
+                    'team_id' => $teamId,
+                    'email' => $email,
+                    'name' => $validated['name'] ?? null,
+                    'entity_id' => $entityId,
+                    'status' => 'pending',
+                ]);
+            }
         } elseif ($owner->status === 'approved') {
             // Bereits freigeschaltet: Magic Link senden
             $token = $owner->generateToken();

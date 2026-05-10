@@ -198,4 +198,9 @@ class SjEntity extends Model
     {
         return $this->events()->where('starts_at', '>=', now())->orderBy('starts_at');
     }
+
+    public function owner(): HasOne
+    {
+        return $this->hasOne(SjEntityOwner::class, 'entity_id')->where('status', 'approved');
+    }
 }

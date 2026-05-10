@@ -139,9 +139,15 @@ class SyltjunkieServiceProvider extends ServiceProvider
         try {
             $registry = resolve(\Platform\Core\Tools\ToolRegistry::class);
 
-            // Entity Graph - Read Tools
+            // Entity Type Groups & Types - CRUD
             $registry->register(new \Platform\Syltjunkie\Tools\ListEntityTypeGroupsTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\CreateEntityTypeGroupTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\UpdateEntityTypeGroupTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\DeleteEntityTypeGroupTool());
             $registry->register(new \Platform\Syltjunkie\Tools\ListEntityTypesTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\CreateEntityTypeTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\UpdateEntityTypeTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\DeleteEntityTypeTool());
             $registry->register(new \Platform\Syltjunkie\Tools\ListEntitiesTool());
             $registry->register(new \Platform\Syltjunkie\Tools\GetEntityTool());
             $registry->register(new \Platform\Syltjunkie\Tools\ListRelationTypesTool());

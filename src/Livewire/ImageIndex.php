@@ -106,8 +106,8 @@ class ImageIndex extends Component
             return null;
         }
 
-        // EXIF DateTimeOriginal ist das primaere Feld
-        $dateStr = $exif['DateTimeOriginal'] ?? $exif['DateTimeDigitized'] ?? $exif['DateTime'] ?? null;
+        // Nur DateTimeOriginal — kein Fallback auf DateTimeDigitized/DateTime
+        $dateStr = $exif['DateTimeOriginal'] ?? null;
 
         if (!$dateStr) {
             return null;

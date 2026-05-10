@@ -75,6 +75,7 @@ class SyltjunkieServiceProvider extends ServiceProvider
                 \Platform\Syltjunkie\Console\Commands\FetchGoogleTrends::class,
                 \Platform\Syltjunkie\Console\Commands\MatchNearbyImages::class,
                 \Platform\Syltjunkie\Console\Commands\FetchWeather::class,
+                \Platform\Syltjunkie\Console\Commands\BackfillImageTakenAt::class,
             ]);
         }
 

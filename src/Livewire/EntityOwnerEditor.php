@@ -18,10 +18,11 @@ class EntityOwnerEditor extends Component
     public string $notes = '';
     public string $entitySearch = '';
 
-    public function mount(int $owner): void
+    public function mount(SjEntityOwner $owner): void
     {
         $team = Auth::user()->currentTeam;
-        $this->owner = SjEntityOwner::where('team_id', $team->id)->findOrFail($owner);
+        abort_if($owner->team_id !== $team->id, 404);
+        $this->owner = $owner;
 
         $this->entityId = $this->owner->entity_id;
         $this->status = $this->owner->status;

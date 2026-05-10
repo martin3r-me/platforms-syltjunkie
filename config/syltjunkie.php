@@ -66,6 +66,14 @@ return [
         'retention_days' => 365,
     ],
 
+    'owner_auth' => [
+        'enabled' => env('SYLTJUNKIE_OWNER_AUTH_ENABLED', true),
+        'frontend_url' => env('SYLTJUNKIE_FRONTEND_URL', 'https://syltjunkie.de'),
+        'token_ttl_minutes' => 30,
+        'session_ttl_hours' => 24,
+        'rate_limit_per_hour' => 3,
+    ],
+
     'sidebar' => [
         [
             'group' => 'Entity Graph',

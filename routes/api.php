@@ -9,6 +9,20 @@ use Platform\Syltjunkie\Http\Controllers\Api\MapApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\WeatherApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\ShopApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\ImageApiController;
+use Platform\Syltjunkie\Http\Controllers\Api\OwnerAuthController;
+use Platform\Syltjunkie\Http\Controllers\Api\OwnerApiController;
+
+// Owner Auth (public, no middleware)
+Route::post('/auth/register', [OwnerAuthController::class, 'register']);
+Route::post('/auth/request', [OwnerAuthController::class, 'requestLink']);
+Route::post('/auth/verify', [OwnerAuthController::class, 'verify']);
+
+// Owner API (authenticated via SjOwnerAuthenticate)
+Route::middleware('sj.owner.auth')->group(function () {
+    Route::get('/owner/me', [OwnerApiController::class, 'me']);
+    Route::get('/owner/entity', [OwnerApiController::class, 'entity']);
+    Route::put('/owner/entity', [OwnerApiController::class, 'updateEntity']);
+});
 
 Route::get('/entities', [EntityApiController::class, 'index']);
 Route::get('/entities/{slug}', [EntityApiController::class, 'show']);

@@ -22,6 +22,8 @@ use Platform\Syltjunkie\Livewire\ShopProductIndex;
 use Platform\Syltjunkie\Livewire\ShopProductEditor;
 use Platform\Syltjunkie\Livewire\ShopOrderIndex;
 use Platform\Syltjunkie\Livewire\ShopOrderDetail;
+use Platform\Syltjunkie\Livewire\EntityOwnerIndex;
+use Platform\Syltjunkie\Livewire\EntityOwnerEditor;
 
 Route::get('/', Dashboard::class)->name('syltjunkie.dashboard');
 Route::get('/entities', EntityIndex::class)->name('syltjunkie.entities.index');
@@ -47,3 +49,5 @@ Route::get('/shop/products/create', ShopProductEditor::class)->name('syltjunkie.
 Route::get('/shop/products/{product}/edit', ShopProductEditor::class)->name('syltjunkie.shop.products.edit');
 Route::get('/shop/orders', ShopOrderIndex::class)->name('syltjunkie.shop.orders.index');
 Route::get('/shop/orders/{order}', ShopOrderDetail::class)->name('syltjunkie.shop.orders.detail');
+Route::get('/owners', EntityOwnerIndex::class)->name('syltjunkie.owners.index');
+Route::get('/owners/{owner}/edit', EntityOwnerEditor::class)->name('syltjunkie.owners.edit');

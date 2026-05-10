@@ -20,6 +20,14 @@
         </x-ui-sidebar-item>
     </x-ui-sidebar-list>
 
+    {{-- Entity-Verwaltung --}}
+    <x-ui-sidebar-list label="Entity-Verwaltung">
+        <x-ui-sidebar-item :href="route('syltjunkie.owners.index')">
+            @svg('heroicon-o-key', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Inhaber</span>
+        </x-ui-sidebar-item>
+    </x-ui-sidebar-list>
+
     {{-- SEO Monitoring --}}
     <x-ui-sidebar-list label="SEO Monitoring">
         <x-ui-sidebar-item :href="route('syltjunkie.trend-signals.index')">
@@ -103,6 +111,9 @@
             </a>
             <a href="{{ route('syltjunkie.entity-types.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Entity Types">
                 @svg('heroicon-o-tag', 'w-5 h-5')
+            </a>
+            <a href="{{ route('syltjunkie.owners.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Inhaber">
+                @svg('heroicon-o-key', 'w-5 h-5')
             </a>
             <a href="{{ route('syltjunkie.trend-signals.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Trend Signals">
                 @svg('heroicon-o-signal', 'w-5 h-5')

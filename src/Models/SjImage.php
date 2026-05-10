@@ -17,6 +17,8 @@ class SjImage extends Model
 
     protected $table = 'sj_images';
 
+    protected bool $shouldSyncLocation = false;
+
     protected $fillable = [
         'team_id',
         'context_file_id',
@@ -49,17 +51,17 @@ class SjImage extends Model
 
         static::saving(function ($model) {
             if ($model->isDirty(['latitude', 'longitude']) && $model->latitude && $model->longitude) {
-                $model->_syncLocation = true;
+                $model->shouldSyncLocation = true;
             }
         });
 
         static::saved(function ($model) {
-            if ($model->_syncLocation ?? false) {
+            if ($model->shouldSyncLocation) {
                 DB::statement(
                     'UPDATE sj_images SET location = ST_SRID(POINT(?, ?), 4326) WHERE id = ?',
                     [$model->longitude, $model->latitude, $model->id]
                 );
-                $model->_syncLocation = false;
+                $model->shouldSyncLocation = false;
             }
         });
     }

@@ -40,7 +40,14 @@ class EntityOwnerEditor extends Component
             'approved_by' => ($this->status === 'approved' && $wasNotApproved) ? Auth::id() : $this->owner->approved_by,
         ]);
 
-        session()->flash('success', 'Inhaber gespeichert.');
+        // Bei Freigabe automatisch Magic Link senden
+        if ($this->status === 'approved' && $wasNotApproved) {
+            $token = $this->owner->generateToken();
+            Mail::to($this->owner->email)->send(new SjMagicLinkMail($this->owner, $token));
+            session()->flash('success', 'Inhaber freigegeben und Magic Link gesendet.');
+        } else {
+            session()->flash('success', 'Inhaber gespeichert.');
+        }
     }
 
     public function sendMagicLink(): void

@@ -3,8 +3,10 @@
 namespace Platform\Syltjunkie\Livewire;
 
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Platform\Syltjunkie\Mail\SjMagicLinkMail;
 use Platform\Syltjunkie\Models\SjEntityOwner;
 
 class EntityOwnerIndex extends Component
@@ -34,6 +36,10 @@ class EntityOwnerIndex extends Component
             'approved_at' => now(),
             'approved_by' => Auth::id(),
         ]);
+
+        // Magic Link direkt senden
+        $token = $owner->generateToken();
+        Mail::to($owner->email)->send(new SjMagicLinkMail($owner, $token));
     }
 
     public function block(int $ownerId): void

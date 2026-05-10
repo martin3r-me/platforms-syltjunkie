@@ -68,11 +68,17 @@ class SyltjunkieServiceProvider extends ServiceProvider
                 \Platform\Syltjunkie\Console\Commands\FetchEntityData::class,
                 \Platform\Syltjunkie\Console\Commands\DiscoverKeywords::class,
                 \Platform\Syltjunkie\Console\Commands\FetchGoogleTrends::class,
+                \Platform\Syltjunkie\Console\Commands\MatchNearbyImages::class,
             ]);
         }
 
         $this->app->booted(function () {
             $schedule = $this->app->make(Schedule::class);
+
+            $schedule->command('syltjunkie:match-nearby-images')
+                ->dailyAt('02:30')
+                ->withoutOverlapping()
+                ->runInBackground();
 
             $schedule->command('syltjunkie:sync-instagram-media')
                 ->dailyAt('03:00')

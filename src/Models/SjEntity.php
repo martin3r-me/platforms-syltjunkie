@@ -132,7 +132,7 @@ class SjEntity extends Model
     public function images(): BelongsToMany
     {
         return $this->belongsToMany(SjImage::class, 'sj_image_entity', 'entity_id', 'sj_image_id')
-            ->withPivot(['sort_order', 'is_primary'])
+            ->withPivot(['sort_order', 'is_primary', 'source', 'distance_m'])
             ->withTimestamps()
             ->orderByPivot('sort_order');
     }

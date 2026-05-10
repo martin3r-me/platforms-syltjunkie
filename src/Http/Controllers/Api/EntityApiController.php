@@ -194,13 +194,20 @@ class EntityApiController extends ApiController
                 'score' => $this->calculateCompleteness($entity),
                 'missing' => $this->getMissingFields($entity),
             ],
-            'images' => $entity->images->map(fn ($img) => [
+            'images' => $entity->images->where('pivot.source', '!=', 'geo_matched')->map(fn ($img) => [
                 'id' => $img->id,
                 'title' => $img->title,
                 'url' => $img->url,
                 'thumbnail_url' => $img->thumbnail_url,
                 'is_primary' => (bool) $img->pivot->is_primary,
             ])->values(),
+            'nearby_images' => $entity->images->where('pivot.source', 'geo_matched')->map(fn ($img) => [
+                'id' => $img->id,
+                'title' => $img->title,
+                'url' => $img->url,
+                'thumbnail_url' => $img->thumbnail_url,
+                'distance_m' => $img->pivot->distance_m,
+            ])->sortBy('pivot.distance_m')->values(),
             'relationships' => $this->formatRelationships($entity),
             'keywords' => $entity->keywords->sortByDesc('search_volume')->take(5)->map(fn ($kw) => [
                 'keyword' => $kw->keyword,

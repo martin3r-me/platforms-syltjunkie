@@ -6,7 +6,7 @@
             <div class="flex items-center gap-1">
                 <span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border"
                       style="background-color: {{ $card->entityType->color ?? '#f3f4f6' }}20; border-color: {{ $card->entityType->color ?? '#d1d5db' }}40; color: {{ $card->entityType->color ?? '#6b7280' }}">
-                    @if($card->entityType->icon)
+                    @if($card->entityType->icon && str_starts_with($card->entityType->icon, 'heroicon-'))
                         @svg($card->entityType->icon, 'w-3 h-3')
                     @endif
                     {{ $card->entityType->name }}

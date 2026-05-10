@@ -62,6 +62,7 @@
                                 <th class="px-4 py-2.5 text-right text-[11px] font-medium text-gray-500 uppercase tracking-wider">Wert</th>
                                 <th class="px-4 py-2.5 text-right text-[11px] font-medium text-gray-500 uppercase tracking-wider">OnPage</th>
                                 <th class="px-4 py-2.5 text-right text-[11px] font-medium text-gray-500 uppercase tracking-wider">Words</th>
+                                <th class="px-4 py-2.5 text-center text-[11px] font-medium text-gray-500 uppercase tracking-wider">Content</th>
                                 <th class="px-4 py-2.5 text-center text-[11px] font-medium text-gray-500 uppercase tracking-wider">
                                     <button wire:click="sortBy('status')" class="flex items-center gap-1 hover:text-gray-900 mx-auto">
                                         Status
@@ -157,6 +158,15 @@
                                         @endif
                                     </td>
 
+                                    {{-- Content Indicators (SEO + Blocks) --}}
+                                    <td class="px-4 py-2.5 text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <span title="SEO Title" class="w-4 h-4 rounded-sm flex items-center justify-center text-[9px] font-bold {{ $entity->seo_title ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-300' }}">T</span>
+                                            <span title="SEO Description" class="w-4 h-4 rounded-sm flex items-center justify-center text-[9px] font-bold {{ $entity->seo_description ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-300' }}">D</span>
+                                            <span title="Content Blocks" class="w-4 h-4 rounded-sm flex items-center justify-center text-[9px] font-bold {{ $entity->content_blocks_count > 0 ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-300' }}">B</span>
+                                        </div>
+                                    </td>
+
                                     {{-- Status --}}
                                     <td class="px-4 py-2.5 text-center">
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium
@@ -167,7 +177,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="px-4 py-8 text-center text-[13px] text-gray-400">
+                                    <td colspan="9" class="px-4 py-8 text-center text-[13px] text-gray-400">
                                         Keine Entities gefunden.
                                     </td>
                                 </tr>

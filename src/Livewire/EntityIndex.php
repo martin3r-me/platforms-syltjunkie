@@ -49,7 +49,8 @@ class EntityIndex extends Component
                 'entityUrls.latestPageSnapshot',
                 'outgoingRelationships' => fn($q) => $q->where('relation_type_id', 1)->where('is_active', true),
                 'outgoingRelationships.targetEntity:id,name,slug',
-            ]);
+            ])
+            ->withCount(['contentBlocks' => fn($q) => $q->where('is_active', true)]);
 
         if ($this->search) {
             $query->where(function ($q) {

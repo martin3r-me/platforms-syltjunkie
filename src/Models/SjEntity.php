@@ -70,17 +70,28 @@ class SjEntity extends Model
 
     public function getGeometryGeoJson(): ?array
     {
-        $row = DB::selectOne(
-            'SELECT CASE WHEN geometry IS NOT NULL THEN ST_AsGeoJSON(geometry) ELSE NULL END as geo FROM sj_entities WHERE id = ?',
-            [$this->id]
-        );
+        try {
+            $row = DB::selectOne(
+                'SELECT ST_AsGeoJSON(geometry) as geo FROM sj_entities WHERE id = ? AND geometry IS NOT NULL',
+                [$this->id]
+            );
 
-        return $row?->geo ? json_decode($row->geo, true) : null;
+            return $row?->geo ? json_decode($row->geo, true) : null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     public function hasGeometry(): bool
     {
-        return DB::selectOne('SELECT (geometry IS NOT NULL) as has_geo FROM sj_entities WHERE id = ?', [$this->id])?->has_geo ?? false;
+        try {
+            return DB::selectOne(
+                'SELECT COUNT(*) as cnt FROM sj_entities WHERE id = ? AND ST_IsValid(geometry)',
+                [$this->id]
+            )?->cnt > 0;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     public function ortEntity(): ?self

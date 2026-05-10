@@ -46,12 +46,6 @@ class SyltjunkieServiceProvider extends ServiceProvider
                 $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
             });
 
-            // Public: Owner-Auth (kein Sanctum-Token nötig)
-            ModuleRouter::apiGroup('syltjunkie', function () {
-                $this->loadRoutesFrom(__DIR__.'/../routes/api-public.php');
-            }, requireAuth: false);
-
-            // Protected: alles andere (Sanctum-Token erforderlich)
             ModuleRouter::apiGroup('syltjunkie', function () {
                 $this->loadRoutesFrom(__DIR__.'/../routes/api.php');
             });

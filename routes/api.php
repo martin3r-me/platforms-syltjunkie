@@ -9,9 +9,14 @@ use Platform\Syltjunkie\Http\Controllers\Api\MapApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\WeatherApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\ShopApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\ImageApiController;
+use Platform\Syltjunkie\Http\Controllers\Api\OwnerAuthController;
 use Platform\Syltjunkie\Http\Controllers\Api\OwnerApiController;
 
-// Owner API (authenticated via eigenes Bearer-Token, kein Sanctum)
+// Owner Auth (Sanctum-Token vom Frontend reicht)
+Route::post('/auth/request', [OwnerAuthController::class, 'requestLink']);
+Route::post('/auth/verify', [OwnerAuthController::class, 'verify']);
+
+// Owner API (zusätzlich eigenes Bearer-Token via sj.owner.auth)
 Route::middleware('sj.owner.auth')->group(function () {
     Route::get('/owner/me', [OwnerApiController::class, 'me']);
     Route::get('/owner/entity', [OwnerApiController::class, 'entity']);

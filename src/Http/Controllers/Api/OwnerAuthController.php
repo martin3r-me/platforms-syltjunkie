@@ -23,21 +23,13 @@ class OwnerAuthController extends ApiController
             'name' => 'nullable|string|max:255',
             'entity_slug' => 'nullable|string|max:255',
             'redirect_url' => 'required|url|max:500',
-            'from_address' => 'nullable|email|max:255',
+            'from_address' => 'required|email|max:255',
         ]);
-
-        // Absender-Adresse validieren gegen Whitelist
-        $fromAddress = null;
-        if (!empty($validated['from_address'])) {
-            $allowed = config('syltjunkie.owner_auth.allowed_from_addresses', []);
-            if (in_array($validated['from_address'], $allowed)) {
-                $fromAddress = $validated['from_address'];
-            }
-        }
 
         $teamId = $this->resolveTeamId($request);
         $email = strtolower($validated['email']);
         $redirectUrl = $validated['redirect_url'];
+        $fromAddress = $validated['from_address'];
 
         $rateLimitKey = 'sj-magic-link:' . $teamId . ':' . $email;
         $maxAttempts = config('syltjunkie.owner_auth.rate_limit_per_hour', 3);
@@ -74,16 +66,14 @@ class OwnerAuthController extends ApiController
                 ->approved()
                 ->first();
 
-            // from_address speichern für spätere Backend-Nutzung
-            if ($fromAddress && $owner->from_address !== $fromAddress) {
-                SjEntityOwner::where('team_id', $teamId)
-                    ->where('email', $email)
-                    ->update(['from_address' => $fromAddress]);
-                $owner->from_address = $fromAddress;
-            }
+            // from_address auf allen Einträgen dieser E-Mail aktualisieren
+            SjEntityOwner::where('team_id', $teamId)
+                ->where('email', $email)
+                ->update(['from_address' => $fromAddress]);
+            $owner->from_address = $fromAddress;
 
             $token = $owner->generateToken();
-            SjMailService::sendMagicLink($owner, $token, $redirectUrl, $fromAddress);
+            SjMailService::sendMagicLink($owner, $token, $redirectUrl);
 
             return $this->success(null, 'Wir haben deine Anfrage erhalten.');
         }

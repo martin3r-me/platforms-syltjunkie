@@ -72,7 +72,6 @@ return [
         'token_ttl_minutes' => 30,
         'session_ttl_hours' => 24,
         'rate_limit_per_hour' => 3,
-        'allowed_from_addresses' => array_filter(explode(',', env('SYLTJUNKIE_ALLOWED_FROM_ADDRESSES', 'noreply@syltjunkie.de'))),
     ],
 
     'sidebar' => [

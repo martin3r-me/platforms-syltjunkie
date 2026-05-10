@@ -11,8 +11,13 @@ class SjMailService
         SjEntityOwner $owner,
         string $token,
         ?string $redirectUrl = null,
-        ?string $fromAddress = null,
     ): void {
+        $from = $owner->from_address;
+
+        if (!$from) {
+            throw new \RuntimeException("Keine Absender-Adresse für Owner #{$owner->id} ({$owner->email}) hinterlegt.");
+        }
+
         $frontendUrl = rtrim(config('syltjunkie.owner_auth.frontend_url', 'https://syltjunkie.de'), '/');
 
         $params = [
@@ -31,10 +36,6 @@ class SjMailService
             'magicLink' => $magicLink,
             'ownerName' => $ownerName,
         ])->render();
-
-        $from = $fromAddress
-            ?? config('syltjunkie.owner_auth.allowed_from_addresses.0')
-            ?? env('POSTMARK_FROM', config('mail.from.address'));
 
         $serverToken = env('POSTMARK_SERVER_TOKEN');
 

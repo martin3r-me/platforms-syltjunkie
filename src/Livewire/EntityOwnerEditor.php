@@ -48,7 +48,7 @@ class EntityOwnerEditor extends Component
         // Bei Freigabe automatisch Magic Link senden
         if ($this->status === 'approved' && $wasNotApproved) {
             $token = $this->owner->generateToken();
-            SjMailService::sendMagicLink($this->owner, $token, null, $this->owner->from_address);
+            SjMailService::sendMagicLink($this->owner, $token);
             session()->flash('success', 'Inhaber freigegeben und Magic Link gesendet.');
         } else {
             session()->flash('success', 'Inhaber gespeichert.');
@@ -63,7 +63,7 @@ class EntityOwnerEditor extends Component
         }
 
         $token = $this->owner->generateToken();
-        SjMailService::sendMagicLink($this->owner, $token, null, $this->owner->from_address);
+        SjMailService::sendMagicLink($this->owner, $token);
 
         session()->flash('success', 'Magic Link gesendet.');
     }

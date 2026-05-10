@@ -140,6 +140,10 @@ class EntityApiController extends ApiController
                 'latestScore',
                 'ctaConfigs' => fn ($q) => $q->where('is_active', true),
                 'entityUrls' => fn ($q) => $q->where('is_active', true),
+                'events' => fn ($q) => $q->where('starts_at', '>=', now())
+                    ->where('status', '!=', 'cancelled')
+                    ->orderBy('starts_at')
+                    ->limit(10),
             ])
             ->first();
 
@@ -233,9 +237,58 @@ class EntityApiController extends ApiController
                 'is_primary' => $url->is_primary,
             ])->values(),
             'links' => $this->buildLinksObject($entity->entityUrls),
+            'upcoming_events' => $entity->events->map(fn ($e) => [
+                'id' => $e->id,
+                'title' => $e->title,
+                'starts_at' => $e->starts_at->toIso8601String(),
+                'ends_at' => $e->ends_at?->toIso8601String(),
+                'is_all_day' => $e->is_all_day,
+                'location_detail' => $e->location_detail,
+                'status' => $e->status,
+            ])->values(),
+            'upcoming_events_total' => $entity->upcomingEvents()->count(),
         ];
 
         return $this->success($data);
+    }
+
+    public function events(Request $request, string $slug): JsonResponse
+    {
+        $teamId = $this->resolveTeamId($request);
+
+        $entity = SjEntity::where('team_id', $teamId)
+            ->where('slug', $slug)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$entity) {
+            return $this->notFound('Entity not found.');
+        }
+
+        $perPage = min((int) $request->query('per_page', 50), 200);
+
+        $query = $entity->events()->orderBy('starts_at');
+
+        if (!$request->boolean('past')) {
+            $query->where('starts_at', '>=', now());
+        }
+
+        $paginator = $query->paginate($perPage);
+
+        $paginator->getCollection()->transform(fn ($e) => [
+            'id' => $e->id,
+            'uuid' => $e->uuid,
+            'title' => $e->title,
+            'description' => $e->description,
+            'starts_at' => $e->starts_at->toIso8601String(),
+            'ends_at' => $e->ends_at?->toIso8601String(),
+            'is_all_day' => $e->is_all_day,
+            'location_detail' => $e->location_detail,
+            'status' => $e->status,
+            'metadata' => $e->metadata,
+        ]);
+
+        return $this->paginatedWithMeta($paginator);
     }
 
     public function keywords(Request $request, string $slug): JsonResponse

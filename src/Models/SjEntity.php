@@ -146,4 +146,14 @@ class SjEntity extends Model
     {
         return $this->hasMany(SjChannelPost::class, 'entity_id');
     }
+
+    public function events(): HasMany
+    {
+        return $this->hasMany(SjEntityEvent::class, 'entity_id');
+    }
+
+    public function upcomingEvents(): HasMany
+    {
+        return $this->events()->where('starts_at', '>=', now())->orderBy('starts_at');
+    }
 }

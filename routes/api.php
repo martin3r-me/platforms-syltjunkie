@@ -9,6 +9,7 @@ use Platform\Syltjunkie\Http\Controllers\Api\MapApiController;
 
 Route::get('/entities', [EntityApiController::class, 'index']);
 Route::get('/entities/{slug}', [EntityApiController::class, 'show']);
+Route::get('/entities/{slug}/events', [EntityApiController::class, 'events']);
 Route::get('/entities/{slug}/keywords', [EntityApiController::class, 'keywords']);
 Route::get('/entity-types', [EntityTypeApiController::class, 'index']);
 Route::get('/groups', [EntityTypeApiController::class, 'groups']);

@@ -10,6 +10,10 @@
             @svg('heroicon-o-globe-alt', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Dashboard</span>
         </x-ui-sidebar-item>
+        <x-ui-sidebar-item :href="route('syltjunkie.pipeline.index')">
+            @svg('heroicon-o-funnel', 'w-4 h-4 text-[var(--ui-secondary)]')
+            <span class="ml-2 text-sm">Pipeline</span>
+        </x-ui-sidebar-item>
         <x-ui-sidebar-item :href="route('syltjunkie.entities.index')">
             @svg('heroicon-o-building-storefront', 'w-4 h-4 text-[var(--ui-secondary)]')
             <span class="ml-2 text-sm">Entities</span>
@@ -105,6 +109,9 @@
         <div class="flex flex-col gap-2">
             <a href="{{ route('syltjunkie.dashboard') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Dashboard">
                 @svg('heroicon-o-globe-alt', 'w-5 h-5')
+            </a>
+            <a href="{{ route('syltjunkie.pipeline.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Pipeline">
+                @svg('heroicon-o-funnel', 'w-5 h-5')
             </a>
             <a href="{{ route('syltjunkie.entities.index') }}" wire:navigate class="flex items-center justify-center p-2 rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]" title="Entities">
                 @svg('heroicon-o-building-storefront', 'w-5 h-5')

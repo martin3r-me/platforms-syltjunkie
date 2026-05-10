@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Symfony\Component\Uid\UuidV7;
@@ -235,5 +236,12 @@ class SjEntity extends Model
     public function owner(): HasOne
     {
         return $this->hasOne(SjEntityOwner::class, 'entity_id')->where('status', 'approved');
+    }
+
+    public function contentBlocks(): MorphMany
+    {
+        return $this->morphMany(SjContentBlock::class, 'blockable')
+            ->where('is_active', true)
+            ->orderBy('order');
     }
 }

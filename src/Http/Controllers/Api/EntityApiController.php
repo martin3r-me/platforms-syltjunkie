@@ -146,6 +146,7 @@ class EntityApiController extends ApiController
                 'ctaConfigs' => fn ($q) => $q->where('is_active', true),
                 'entityUrls' => fn ($q) => $q->where('is_active', true),
                 'owner',
+                'contentBlocks',
                 'events' => fn ($q) => $q->where('starts_at', '>=', now())
                     ->where('status', '!=', 'cancelled')
                     ->orderBy('starts_at')
@@ -267,6 +268,10 @@ class EntityApiController extends ApiController
                 'status' => $e->status,
             ])->values(),
             'upcoming_events_total' => $entity->upcomingEvents()->count(),
+            'blocks' => $entity->contentBlocks->map(fn ($b) => [
+                'type' => $b->block_type,
+                'content' => $b->content,
+            ])->values(),
             'has_owner' => $entity->owner !== null,
         ];
 

@@ -29,11 +29,80 @@
                     @empty
                         <span class="text-[13px] text-gray-500">{{ $entity->entityType?->name }}</span>
                     @endforelse
+                    <button wire:click="$toggle('showTypeEditor')" class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors" title="Entity Types bearbeiten">
+                        @svg('heroicon-o-pencil-square', 'w-3.5 h-3.5')
+                    </button>
                     @php $ortName = $entity->outgoingRelationships->where('relation_type_id', 1)->where('is_active', true)->first()?->targetEntity?->name; @endphp
                     @if($ortName)
                         <span class="text-[13px] text-gray-400">&middot; {{ $ortName }}</span>
                     @endif
                 </div>
+
+                {{-- Entity Type Editor --}}
+                @if($showTypeEditor)
+                <div class="mt-3 bg-white rounded-lg border border-gray-200 p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-[13px] font-semibold text-gray-700">Entity Types bearbeiten</h3>
+                        <button wire:click="$set('showTypeEditor', false)" class="text-gray-400 hover:text-gray-600">
+                            @svg('heroicon-o-x-mark', 'w-4 h-4')
+                        </button>
+                    </div>
+
+                    {{-- Selected types --}}
+                    @if(count($selectedTypeIds))
+                    <div class="flex flex-wrap gap-1.5 mb-3">
+                        @foreach($availableTypes->whereIn('id', $selectedTypeIds) as $type)
+                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium"
+                              style="background-color: {{ $type->color ?? '#6B7280' }}15; color: {{ $type->color ?? '#6B7280' }};">
+                            {{ $type->name }}
+                            @if($primaryTypeId === $type->id)
+                                <svg class="w-3 h-3 opacity-60" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                            @else
+                                <button wire:click="setPrimaryEntityType({{ $type->id }})" class="opacity-40 hover:opacity-100" title="Als Primary setzen">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 20 20" stroke-width="1.5"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                                </button>
+                            @endif
+                            <button wire:click="toggleEntityType({{ $type->id }})" class="opacity-40 hover:opacity-100" title="Entfernen">
+                                @svg('heroicon-o-x-mark', 'w-3 h-3')
+                            </button>
+                        </span>
+                        @endforeach
+                    </div>
+                    @endif
+
+                    {{-- Search --}}
+                    <input type="text" wire:model.live.debounce.300ms="typeSearch" placeholder="Typ suchen..."
+                        class="w-full rounded-md border border-gray-200 px-3 py-1.5 text-[12px] text-gray-700 placeholder-gray-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 mb-2" />
+
+                    {{-- Available types --}}
+                    <div class="max-h-48 overflow-y-auto space-y-0.5">
+                        @foreach($availableTypes as $type)
+                        <button wire:click="toggleEntityType({{ $type->id }})"
+                            class="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded text-[12px] hover:bg-gray-50 transition-colors {{ in_array($type->id, $selectedTypeIds) ? 'bg-gray-50' : '' }}">
+                            <span class="inline-flex w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {{ $type->color ?? '#6B7280' }};"></span>
+                            <span class="text-gray-900 flex-1">{{ $type->name }}</span>
+                            @if($type->group)
+                                <span class="text-[10px] text-gray-400">{{ $type->group->name }}</span>
+                            @endif
+                            @if(in_array($type->id, $selectedTypeIds))
+                                @svg('heroicon-s-check', 'w-3.5 h-3.5 text-blue-600 flex-shrink-0')
+                            @endif
+                        </button>
+                        @endforeach
+                    </div>
+
+                    {{-- Save --}}
+                    <div class="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
+                        <button wire:click="$set('showTypeEditor', false)" class="px-3 py-1.5 text-[12px] text-gray-500 hover:text-gray-700">
+                            Abbrechen
+                        </button>
+                        <button wire:click="saveEntityTypes" class="rounded-lg bg-blue-600 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-blue-700"
+                            {{ empty($selectedTypeIds) ? 'disabled' : '' }}>
+                            Speichern
+                        </button>
+                    </div>
+                </div>
+                @endif
             </div>
 
             {{-- SEO Overview Cards (Website-URL) --}}

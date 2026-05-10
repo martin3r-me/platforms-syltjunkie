@@ -92,6 +92,7 @@ class ContentApiController extends ApiController
                 'entities.outgoingRelationships.targetEntity:id,name,slug',
                 'coverImage.contextFile',
                 'images.contextFile',
+                'contentBlocks',
             ])
             ->first();
 
@@ -139,6 +140,10 @@ class ContentApiController extends ApiController
                 'url' => $img->url,
                 'thumbnail_url' => $img->thumbnail_url,
                 'role' => $img->pivot->role,
+            ])->values(),
+            'blocks' => $piece->contentBlocks->map(fn ($b) => [
+                'type' => $b->block_type,
+                'content' => $b->content,
             ])->values(),
         ];
 

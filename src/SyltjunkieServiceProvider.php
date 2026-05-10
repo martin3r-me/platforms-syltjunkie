@@ -215,6 +215,11 @@ class SyltjunkieServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Syltjunkie\Tools\UpdateShopVariantsTool());
             $registry->register(new \Platform\Syltjunkie\Tools\ListShopOrdersTool());
 
+            // Content Blocks
+            $registry->register(new \Platform\Syltjunkie\Tools\ManageContentBlocksTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\GetContentBlocksTool());
+            $registry->register(new \Platform\Syltjunkie\Tools\UpdateContentBlockTool());
+
             // Pipeline (Entity Kanban)
             $registry->register(new \Platform\Syltjunkie\Tools\ListPipelineSlotsTool());
             $registry->register(new \Platform\Syltjunkie\Tools\ListPipelineCardsTool());

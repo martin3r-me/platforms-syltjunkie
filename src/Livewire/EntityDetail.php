@@ -7,6 +7,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use Platform\Core\Services\ContextFileService;
 use Platform\Syltjunkie\Models\SjEntity;
+use Platform\Syltjunkie\Models\SjEntityType;
 use Platform\Syltjunkie\Models\SjImage;
 use Platform\Syltjunkie\Models\SjKeywordRanking;
 use Platform\Syltjunkie\Models\SjPageChange;
@@ -24,6 +25,11 @@ class EntityDetail extends Component
     public ?float $editLongitude = null;
     public $imageUpload;
 
+    public bool $showTypeEditor = false;
+    public array $selectedTypeIds = [];
+    public ?int $primaryTypeId = null;
+    public string $typeSearch = '';
+
     public function mount(SjEntity $entity): void
     {
         abort_unless($entity->team_id === Auth::user()->currentTeam->id, 403);
@@ -31,6 +37,9 @@ class EntityDetail extends Component
         $this->geometry = $entity->getGeometryGeoJson();
         $this->editLatitude = $entity->latitude ? (float) $entity->latitude : null;
         $this->editLongitude = $entity->longitude ? (float) $entity->longitude : null;
+
+        $this->selectedTypeIds = $entity->entityTypes()->pluck('sj_entity_types.id')->toArray();
+        $this->primaryTypeId = $entity->entity_type_id;
     }
 
     public function saveGeometry(?array $geometry): void
@@ -92,6 +101,39 @@ class EntityDetail extends Component
     public function unlinkImage(int $imageId): void
     {
         $this->entity->images()->detach($imageId);
+    }
+
+    public function toggleEntityType(int $typeId): void
+    {
+        if (in_array($typeId, $this->selectedTypeIds)) {
+            $this->selectedTypeIds = array_values(array_diff($this->selectedTypeIds, [$typeId]));
+            if ($this->primaryTypeId === $typeId) {
+                $this->primaryTypeId = $this->selectedTypeIds[0] ?? null;
+            }
+        } else {
+            $this->selectedTypeIds[] = $typeId;
+            if ($this->primaryTypeId === null) {
+                $this->primaryTypeId = $typeId;
+            }
+        }
+    }
+
+    public function setPrimaryEntityType(int $typeId): void
+    {
+        if (in_array($typeId, $this->selectedTypeIds)) {
+            $this->primaryTypeId = $typeId;
+        }
+    }
+
+    public function saveEntityTypes(): void
+    {
+        if (empty($this->selectedTypeIds)) {
+            return;
+        }
+
+        $this->entity->syncEntityTypes($this->selectedTypeIds, $this->primaryTypeId);
+        $this->entity->load('entityTypes', 'entityType.group');
+        $this->showTypeEditor = false;
     }
 
     public function setPrimaryImage(int $imageId): void
@@ -173,6 +215,18 @@ class EntityDetail extends Component
             ->orderBy('date')
             ->get();
 
+        // Available entity types for type editor
+        $availableTypes = collect();
+        if ($this->showTypeEditor) {
+            $typeQuery = SjEntityType::where('team_id', Auth::user()->currentTeam->id)
+                ->with('group:id,name,code')
+                ->orderBy('name');
+            if ($this->typeSearch) {
+                $typeQuery->where('name', 'like', "%{$this->typeSearch}%");
+            }
+            $availableTypes = $typeQuery->get();
+        }
+
         return view('syltjunkie::livewire.entity-detail', [
             'entity' => $this->entity,
             'keywordRankings' => $keywordRankings,
@@ -182,6 +236,7 @@ class EntityDetail extends Component
             'entityPosts' => $entityPosts,
             'currentWeather' => $currentWeather,
             'weatherForecast' => $weatherForecast,
+            'availableTypes' => $availableTypes,
         ])->layout('platform::layouts.app');
     }
 }

@@ -24,7 +24,17 @@ class OwnerAuthController extends ApiController
             'name' => 'nullable|string|max:255',
             'entity_slug' => 'nullable|string|max:255',
             'redirect_url' => 'nullable|url|max:500',
+            'from_address' => 'nullable|email|max:255',
         ]);
+
+        // Absender-Adresse validieren gegen Whitelist
+        $fromAddress = null;
+        if (!empty($validated['from_address'])) {
+            $allowed = config('syltjunkie.owner_auth.allowed_from_addresses', []);
+            if (in_array($validated['from_address'], $allowed)) {
+                $fromAddress = $validated['from_address'];
+            }
+        }
 
         $teamId = $this->resolveTeamId($request);
         $email = strtolower($validated['email']);
@@ -70,7 +80,11 @@ class OwnerAuthController extends ApiController
             // Bereits freigeschaltet: Magic Link senden
             $token = $owner->generateToken();
             $redirectUrl = $validated['redirect_url'] ?? null;
-            Mail::to($owner->email)->send(new SjMagicLinkMail($owner, $token, $redirectUrl));
+            $mailable = new SjMagicLinkMail($owner, $token, $redirectUrl);
+            if ($fromAddress) {
+                $mailable->from($fromAddress);
+            }
+            Mail::to($owner->email)->send($mailable);
         }
 
         // Immer gleiche Antwort, kein Info-Leak

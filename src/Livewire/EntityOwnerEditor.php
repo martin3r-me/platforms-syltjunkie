@@ -43,7 +43,12 @@ class EntityOwnerEditor extends Component
         // Bei Freigabe automatisch Magic Link senden
         if ($this->status === 'approved' && $wasNotApproved) {
             $token = $this->owner->generateToken();
-            Mail::to($this->owner->email)->send(new SjMagicLinkMail($this->owner, $token));
+            $mailable = new SjMagicLinkMail($this->owner, $token);
+            $fromAddresses = config('syltjunkie.owner_auth.allowed_from_addresses', []);
+            if (!empty($fromAddresses[0])) {
+                $mailable->from($fromAddresses[0]);
+            }
+            Mail::to($this->owner->email)->send($mailable);
             session()->flash('success', 'Inhaber freigegeben und Magic Link gesendet.');
         } else {
             session()->flash('success', 'Inhaber gespeichert.');
@@ -58,7 +63,12 @@ class EntityOwnerEditor extends Component
         }
 
         $token = $this->owner->generateToken();
-        Mail::to($this->owner->email)->send(new SjMagicLinkMail($this->owner, $token));
+        $mailable = new SjMagicLinkMail($this->owner, $token);
+        $fromAddresses = config('syltjunkie.owner_auth.allowed_from_addresses', []);
+        if (!empty($fromAddresses[0])) {
+            $mailable->from($fromAddresses[0]);
+        }
+        Mail::to($this->owner->email)->send($mailable);
 
         session()->flash('success', 'Magic Link gesendet.');
     }

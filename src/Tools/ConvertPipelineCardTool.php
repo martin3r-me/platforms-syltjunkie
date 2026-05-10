@@ -76,6 +76,8 @@ class ConvertPipelineCardTool implements ToolContract, ToolMetadataContract
                 'is_active' => true,
             ]);
 
+            $entity->syncEntityTypes([$card->entity_type_id]);
+
             if ($card->url) {
                 SjEntityUrl::create([
                     'team_id' => $teamId,

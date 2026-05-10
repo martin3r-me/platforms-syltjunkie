@@ -110,6 +110,7 @@ class EntityDetail extends Component
     {
         $this->entity->load([
             'entityType.group',
+            'entityTypes',
             'outgoingRelationships.targetEntity.entityType',
             'outgoingRelationships.relationType',
             'incomingRelationships.sourceEntity.entityType',

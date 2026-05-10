@@ -87,6 +87,7 @@ class ContentApiController extends ApiController
                 'keywords',
                 'entities:id,name,slug,entity_type_id',
                 'entities.entityType:id,code,name',
+                'entities.entityTypes:id,code,name',
                 'entities.outgoingRelationships' => fn ($q) => $q->where('relation_type_id', 1)->where('is_active', true),
                 'entities.outgoingRelationships.targetEntity:id,name,slug',
                 'coverImage.contextFile',
@@ -122,6 +123,11 @@ class ContentApiController extends ApiController
                     'code' => $e->entityType->code,
                     'name' => $e->entityType->name,
                 ] : null,
+                'entity_types' => $e->entityTypes->map(fn ($t) => [
+                    'code' => $t->code,
+                    'name' => $t->name,
+                    'is_primary' => (bool) $t->pivot->is_primary,
+                ])->values(),
             ])->values(),
             'cover_image' => $piece->coverImage ? [
                 'url' => $piece->coverImage->url,

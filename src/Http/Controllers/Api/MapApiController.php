@@ -7,7 +7,6 @@ use Illuminate\Http\Request;
 use Platform\Core\Http\Controllers\ApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\Concerns\ResolvesPublicTeam;
 use Platform\Syltjunkie\Models\SjEntity;
-use Platform\Syltjunkie\Models\SjEntityType;
 
 class MapApiController extends ApiController
 {
@@ -32,12 +31,9 @@ class MapApiController extends ApiController
                 'outgoingRelationships.targetEntity:id,name,slug',
             ]);
 
-        // Filter: type
+        // Filter: type — searches across all assigned types via pivot
         if ($type = $request->query('type')) {
-            $typeId = SjEntityType::where('team_id', $teamId)
-                ->where('code', $type)
-                ->value('id');
-            $query->where('entity_type_id', $typeId);
+            $query->whereHas('entityTypes', fn ($q) => $q->where('code', $type)->where('team_id', $teamId));
         }
 
         // Filter: group

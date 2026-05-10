@@ -7,7 +7,6 @@ use Illuminate\Http\Request;
 use Platform\Core\Http\Controllers\ApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\Concerns\ResolvesPublicTeam;
 use Platform\Syltjunkie\Models\SjEntity;
-use Platform\Syltjunkie\Models\SjEntityType;
 
 class EntityApiController extends ApiController
 {
@@ -24,18 +23,16 @@ class EntityApiController extends ApiController
             ->with([
                 'entityType:id,code,name,color,icon,group_id',
                 'entityType.group:id,code,prefix',
+                'entityTypes:id,code,name,color,icon',
                 'images' => fn ($q) => $q->wherePivot('is_primary', true)->limit(1),
                 'images.contextFile',
                 'outgoingRelationships' => fn ($q) => $q->where('relation_type_id', 1)->where('is_active', true),
                 'outgoingRelationships.targetEntity:id,name,slug',
             ]);
 
-        // Filter: type (entity_type code)
+        // Filter: type (entity_type code) — searches across all assigned types via pivot
         if ($type = $request->query('type')) {
-            $typeId = SjEntityType::where('team_id', $teamId)
-                ->where('code', $type)
-                ->value('id');
-            $query->where('entity_type_id', $typeId);
+            $query->whereHas('entityTypes', fn ($q) => $q->where('code', $type)->where('team_id', $teamId));
         }
 
         // Filter: group (entity_type_group code)
@@ -102,6 +99,13 @@ class EntityApiController extends ApiController
                     'color' => $entity->entityType->color,
                     'icon' => $entity->entityType->icon,
                 ] : null,
+                'entity_types' => $entity->entityTypes->map(fn ($t) => [
+                    'code' => $t->code,
+                    'name' => $t->name,
+                    'color' => $t->color,
+                    'icon' => $t->icon,
+                    'is_primary' => (bool) $t->pivot->is_primary,
+                ])->values(),
                 'primary_image' => $primaryImage ? [
                     'url' => $primaryImage->url,
                     'thumbnail_url' => $primaryImage->thumbnail_url,
@@ -121,6 +125,7 @@ class EntityApiController extends ApiController
             ->where('is_active', true)
             ->with([
                 'entityType.group',
+                'entityTypes',
                 'images.contextFile',
                 'outgoingRelationships.relationType',
                 'outgoingRelationships.targetEntity:id,name,slug,description,latitude,longitude,entity_type_id',
@@ -185,6 +190,13 @@ class EntityApiController extends ApiController
                     'prefix' => $entity->entityType->group->prefix ?? $entity->entityType->group->code,
                 ] : null,
             ] : null,
+            'entity_types' => $entity->entityTypes->map(fn ($t) => [
+                'code' => $t->code,
+                'name' => $t->name,
+                'icon' => $t->icon,
+                'color' => $t->color,
+                'is_primary' => (bool) $t->pivot->is_primary,
+            ])->values(),
             'extra_fields' => [
                 'tags' => $entity->extra_fields['tags'] ?? [],
                 'google_is_claimed' => $entity->extra_fields['google_is_claimed'] ?? null,

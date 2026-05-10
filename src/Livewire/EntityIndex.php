@@ -43,6 +43,7 @@ class EntityIndex extends Component
         $query = SjEntity::where('team_id', $team->id)
             ->with([
                 'entityType.group',
+                'entityTypes',
                 'entityUrls' => fn($q) => $q->where('is_active', true)->where('platform', 'website'),
                 'entityUrls.latestSnapshot',
                 'entityUrls.latestPageSnapshot',
@@ -69,7 +70,7 @@ class EntityIndex extends Component
         }
 
         if ($this->filterTypeId) {
-            $query->where('entity_type_id', $this->filterTypeId);
+            $query->whereHas('entityTypes', fn ($q) => $q->where('sj_entity_types.id', $this->filterTypeId));
         }
 
         if ($this->filterStatus) {

@@ -83,7 +83,7 @@ class ListEntitiesTool implements ToolContract, ToolMetadataContract
             $q = SjEntity::query()->where('team_id', $rootTeamId)->where('is_active', true);
 
             if (!empty($arguments['entity_type_id'])) {
-                $q->where('entity_type_id', (int) $arguments['entity_type_id']);
+                $q->whereHas('entityTypes', fn($sub) => $sub->where('sj_entity_types.id', (int) $arguments['entity_type_id']));
             }
             if (!empty($arguments['group_id'])) {
                 $q->whereHas('entityType', fn($sub) => $sub->where('group_id', (int) $arguments['group_id']));
@@ -104,7 +104,7 @@ class ListEntitiesTool implements ToolContract, ToolMetadataContract
 
             $includeType = $arguments['include_type'] ?? true;
             if ($includeType) {
-                $q->with('entityType.group');
+                $q->with(['entityType.group', 'entityTypes']);
             }
 
             $q->with([
@@ -134,6 +134,12 @@ class ListEntitiesTool implements ToolContract, ToolMetadataContract
                     $item['entity_type_name'] = $e->entityType?->name;
                     $item['entity_type_code'] = $e->entityType?->code;
                     $item['group_name'] = $e->entityType?->group?->name;
+                    $item['entity_types'] = $e->entityTypes->map(fn($t) => [
+                        'id' => $t->id,
+                        'code' => $t->code,
+                        'name' => $t->name,
+                        'is_primary' => (bool) $t->pivot->is_primary,
+                    ])->values()->toArray();
                 }
                 if ($includeExtra) {
                     $item['extra_fields'] = $e->extra_fields;

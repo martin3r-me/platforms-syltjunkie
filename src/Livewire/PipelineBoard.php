@@ -175,6 +175,8 @@ class PipelineBoard extends Component
             'is_active' => true,
         ]);
 
+        $entity->syncEntityTypes([$card->entity_type_id]);
+
         if ($card->url) {
             SjEntityUrl::create([
                 'team_id' => $team->id,

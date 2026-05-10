@@ -80,7 +80,7 @@ class LandingApiController extends ApiController
             $typeIds = $group->entityTypes->pluck('id');
             $entities = SjEntity::where('team_id', $teamId)
                 ->where('is_active', true)
-                ->whereIn('entity_type_id', $typeIds)
+                ->whereHas('entityTypes', fn ($q) => $q->whereIn('sj_entity_types.id', $typeIds))
                 ->with([
                     'entityType:id,code,name,color,icon,group_id',
                     'entityType.group:id,code,prefix',
@@ -109,7 +109,7 @@ class LandingApiController extends ApiController
             ->where('is_active', true)
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
-            ->whereIn('entity_type_id', $mapTypeIds)
+            ->whereHas('entityTypes', fn ($q) => $q->whereIn('sj_entity_types.id', $mapTypeIds))
             ->with([
                 'entityType:id,code,name,color,icon,group_id',
                 'entityType.group:id,code,prefix',

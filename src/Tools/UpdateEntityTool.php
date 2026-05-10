@@ -47,6 +47,15 @@ class UpdateEntityTool implements ToolContract, ToolMetadataContract
                 'status' => ['type' => 'string', 'enum' => ['aktiv', 'saisonal_geschlossen', 'dauerhaft_geschlossen']],
                 'source' => ['type' => 'string', 'enum' => ['manuell', 'crowdsourcing', 'import_google', 'import_instagram', 'self_service']],
                 'geometry' => ['type' => ['object', 'null'], 'description' => 'Optional: GeoJSON Geometry (Point, LineString, Polygon).'],
+                'entity_type_ids' => [
+                    'type' => 'array',
+                    'items' => ['type' => 'integer'],
+                    'description' => 'Optional: Entity-Type IDs setzen. Der erste Eintrag oder primary_type_id wird Primärtyp.',
+                ],
+                'primary_type_id' => [
+                    'type' => 'integer',
+                    'description' => 'Optional: Primärtyp-ID (muss in entity_type_ids enthalten sein).',
+                ],
                 'extra_fields' => ['type' => 'object', 'description' => 'Optional: Typ-spezifische Felder (überschreibt komplett).'],
                 'is_active' => ['type' => 'boolean', 'description' => 'Optional: Aktiv/Inaktiv.'],
             ],
@@ -82,6 +91,13 @@ class UpdateEntityTool implements ToolContract, ToolMetadataContract
 
             if (array_key_exists('geometry', $arguments)) {
                 $entity->setGeometry($arguments['geometry']);
+            }
+
+            // Sync entity types if provided
+            if (!empty($arguments['entity_type_ids']) && is_array($arguments['entity_type_ids'])) {
+                $typeIds = array_map('intval', $arguments['entity_type_ids']);
+                $primaryId = !empty($arguments['primary_type_id']) ? (int) $arguments['primary_type_id'] : null;
+                $entity->syncEntityTypes($typeIds, $primaryId);
             }
 
             // Update lokalisiert_in relationship if ort is provided

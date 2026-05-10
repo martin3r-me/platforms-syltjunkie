@@ -187,6 +187,9 @@ class SyltjunkieServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Syltjunkie\Tools\ListTrendSignalsTool());
             $registry->register(new \Platform\Syltjunkie\Tools\UpdateTrendSignalTool());
 
+            // Entity Types Management
+            $registry->register(new \Platform\Syltjunkie\Tools\UpdateEntityTypesTool());
+
             // Entity Discovery
             $registry->register(new \Platform\Syltjunkie\Tools\DiscoverEntitiesBySearchTool());
 

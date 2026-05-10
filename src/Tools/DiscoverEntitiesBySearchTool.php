@@ -163,6 +163,8 @@ class DiscoverEntitiesBySearchTool implements ToolContract, ToolMetadataContract
                             'is_active' => true,
                         ]);
 
+                        $entity->syncEntityTypes([$entityTypeId]);
+
                         // Create lokalisiert_in relationship if ort was extracted
                         if ($ort) {
                             $ortEntity = SjEntity::where('team_id', $rootTeamId)

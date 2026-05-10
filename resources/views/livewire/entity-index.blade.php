@@ -90,8 +90,14 @@
                                             </div>
                                             <div class="min-w-0">
                                                 <div class="text-[13px] font-medium text-gray-900 truncate">{{ $entity->name }}</div>
-                                                <div class="text-[11px] text-gray-400 truncate">
-                                                    {{ $entity->entityType?->group?->name }} &rarr; {{ $entity->entityType?->name }}
+                                                <div class="text-[11px] text-gray-400 truncate flex items-center gap-1 flex-wrap">
+                                                    {{ $entity->entityType?->group?->name }} &rarr;
+                                                    @foreach($entity->entityTypes as $type)
+                                                        <span class="{{ $type->pivot->is_primary ? 'font-medium text-gray-600' : 'text-gray-400' }}">{{ $type->name }}{{ !$loop->last ? ',' : '' }}</span>
+                                                    @endforeach
+                                                    @if($entity->entityTypes->isEmpty())
+                                                        {{ $entity->entityType?->name }}
+                                                    @endif
                                                 </div>
                                             </div>
                                         </div>

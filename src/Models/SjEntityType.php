@@ -5,6 +5,7 @@ namespace Platform\Syltjunkie\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Symfony\Component\Uid\UuidV7;
 
@@ -53,5 +54,12 @@ class SjEntityType extends Model
     public function entities(): HasMany
     {
         return $this->hasMany(SjEntity::class, 'entity_type_id');
+    }
+
+    public function allEntities(): BelongsToMany
+    {
+        return $this->belongsToMany(SjEntity::class, 'sj_entity_entity_type')
+            ->withPivot(['is_primary', 'order'])
+            ->withTimestamps();
     }
 }

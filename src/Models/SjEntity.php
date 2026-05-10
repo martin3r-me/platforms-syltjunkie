@@ -102,9 +102,42 @@ class SjEntity extends Model
             ->first()?->targetEntity;
     }
 
-    public function entityType(): BelongsTo
+    public function entityTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(SjEntityType::class, 'sj_entity_entity_type')
+            ->withPivot(['is_primary', 'order'])
+            ->withTimestamps()
+            ->orderByPivot('order');
+    }
+
+    public function primaryEntityType(): BelongsTo
     {
         return $this->belongsTo(SjEntityType::class, 'entity_type_id');
+    }
+
+    public function entityType(): BelongsTo
+    {
+        return $this->primaryEntityType();
+    }
+
+    public function syncEntityTypes(array $typeIds, ?int $primaryTypeId = null): void
+    {
+        if (empty($typeIds)) {
+            return;
+        }
+
+        $primaryTypeId = $primaryTypeId ?? $typeIds[0];
+
+        $syncData = [];
+        foreach ($typeIds as $i => $typeId) {
+            $syncData[$typeId] = [
+                'is_primary' => $typeId === $primaryTypeId,
+                'order' => $i,
+            ];
+        }
+
+        $this->entityTypes()->sync($syncData);
+        $this->update(['entity_type_id' => $primaryTypeId]);
     }
 
     public function outgoingRelationships(): HasMany

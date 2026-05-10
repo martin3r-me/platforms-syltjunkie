@@ -61,7 +61,7 @@ class GetEntityTool implements ToolContract, ToolMetadataContract
             $rootTeamId = (int) $resolved['root_team_id'];
 
             $entity = SjEntity::where('team_id', $rootTeamId)
-                ->with('entityType.group')
+                ->with(['entityType.group', 'entityTypes'])
                 ->find($arguments['entity_id'] ?? 0);
 
             if (!$entity) {
@@ -86,6 +86,12 @@ class GetEntityTool implements ToolContract, ToolMetadataContract
                 'entity_type_name' => $entity->entityType?->name,
                 'entity_type_code' => $entity->entityType?->code,
                 'group_name' => $entity->entityType?->group?->name,
+                'entity_types' => $entity->entityTypes->map(fn($t) => [
+                    'id' => $t->id,
+                    'code' => $t->code,
+                    'name' => $t->name,
+                    'is_primary' => (bool) $t->pivot->is_primary,
+                ])->values()->toArray(),
                 'created_at' => $entity->created_at?->toIso8601String(),
                 'updated_at' => $entity->updated_at?->toIso8601String(),
             ];

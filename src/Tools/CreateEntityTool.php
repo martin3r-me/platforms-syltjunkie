@@ -79,6 +79,11 @@ class CreateEntityTool implements ToolContract, ToolMetadataContract
                     'enum' => ['manuell', 'crowdsourcing', 'import_google', 'import_instagram', 'self_service'],
                     'default' => 'manuell',
                 ],
+                'entity_type_ids' => [
+                    'type' => 'array',
+                    'items' => ['type' => 'integer'],
+                    'description' => 'Optional: Zusätzliche Entity-Type IDs. entity_type_id wird automatisch als Primärtyp gesetzt. Für Multi-Type Entities (z.B. Hotel & Restaurant).',
+                ],
                 'extra_fields' => [
                     'type' => 'object',
                     'description' => 'Optional: Typ-spezifische Felder als JSON (z.B. {"cuisine": ["seafood"], "price_class": "€€€", "michelin_stars": 0}). Schema: syltjunkie.entity_types.GET mit include_schema=true.',
@@ -119,6 +124,19 @@ class CreateEntityTool implements ToolContract, ToolMetadataContract
                 'extra_fields' => (isset($arguments['extra_fields']) && is_array($arguments['extra_fields'])) ? $arguments['extra_fields'] : null,
                 'is_active' => true,
             ]);
+
+            // Sync entity types via pivot table
+            $primaryTypeId = (int) $arguments['entity_type_id'];
+            $allTypeIds = [$primaryTypeId];
+            if (!empty($arguments['entity_type_ids']) && is_array($arguments['entity_type_ids'])) {
+                foreach ($arguments['entity_type_ids'] as $tid) {
+                    $tid = (int) $tid;
+                    if ($tid && !in_array($tid, $allTypeIds)) {
+                        $allTypeIds[] = $tid;
+                    }
+                }
+            }
+            $entity->syncEntityTypes($allTypeIds, $primaryTypeId);
 
             // Create lokalisiert_in relationship if ort is provided
             $ortName = null;

@@ -13,7 +13,6 @@ use Platform\Syltjunkie\Http\Controllers\Api\OwnerAuthController;
 use Platform\Syltjunkie\Http\Controllers\Api\OwnerApiController;
 
 // Owner Auth (public, no middleware)
-Route::post('/auth/register', [OwnerAuthController::class, 'register']);
 Route::post('/auth/request', [OwnerAuthController::class, 'requestLink']);
 Route::post('/auth/verify', [OwnerAuthController::class, 'verify']);
 

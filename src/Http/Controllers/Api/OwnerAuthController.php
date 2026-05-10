@@ -16,27 +16,11 @@ class OwnerAuthController extends ApiController
 {
     use ResolvesPublicTeam;
 
-    public function register(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'email' => 'required|email|max:255',
-            'name' => 'nullable|string|max:255',
-        ]);
-
-        $teamId = $this->resolveTeamId($request);
-
-        SjEntityOwner::firstOrCreate(
-            ['team_id' => $teamId, 'email' => strtolower($validated['email'])],
-            ['name' => $validated['name'] ?? null, 'status' => 'pending']
-        );
-
-        return $this->success(null, 'Anfrage erhalten. Du wirst benachrichtigt, sobald dein Zugang freigeschaltet wird.');
-    }
-
     public function requestLink(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'email' => 'required|email|max:255',
+            'name' => 'nullable|string|max:255',
         ]);
 
         $teamId = $this->resolveTeamId($request);
@@ -46,23 +30,31 @@ class OwnerAuthController extends ApiController
         $maxAttempts = config('syltjunkie.owner_auth.rate_limit_per_hour', 3);
 
         if (RateLimiter::tooManyAttempts($rateLimitKey, $maxAttempts)) {
-            return $this->success(null, 'Falls ein Konto mit dieser E-Mail existiert, wurde ein Login-Link gesendet.');
+            return $this->success(null, 'Wir haben deine Anfrage erhalten.');
         }
 
         RateLimiter::hit($rateLimitKey, 3600);
 
         $owner = SjEntityOwner::where('team_id', $teamId)
             ->where('email', $email)
-            ->approved()
             ->first();
 
-        if ($owner) {
+        if (!$owner) {
+            // Neu: pending-Eintrag anlegen, Admin sieht das im Backend
+            SjEntityOwner::create([
+                'team_id' => $teamId,
+                'email' => $email,
+                'name' => $validated['name'] ?? null,
+                'status' => 'pending',
+            ]);
+        } elseif ($owner->status === 'approved') {
+            // Bereits freigeschaltet: Magic Link senden
             $token = $owner->generateToken();
             Mail::to($owner->email)->send(new SjMagicLinkMail($owner, $token));
         }
 
-        // Generic response regardless of whether owner exists
-        return $this->success(null, 'Falls ein Konto mit dieser E-Mail existiert, wurde ein Login-Link gesendet.');
+        // Immer gleiche Antwort, kein Info-Leak
+        return $this->success(null, 'Wir haben deine Anfrage erhalten.');
     }
 
     public function verify(Request $request): JsonResponse

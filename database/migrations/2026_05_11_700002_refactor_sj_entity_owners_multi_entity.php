@@ -16,8 +16,16 @@ return new class extends Migration
             // Alten Unique-Index entfernen
             $table->dropUnique(['team_id', 'email']);
 
+            // Alten FK entfernen (hat SET NULL, verhindert NOT NULL)
+            $table->dropForeign(['entity_id']);
+        });
+
+        Schema::table('sj_entity_owners', function (Blueprint $table) {
             // entity_id NOT NULL setzen
             $table->unsignedBigInteger('entity_id')->nullable(false)->change();
+
+            // FK neu mit CASCADE statt SET NULL
+            $table->foreign('entity_id')->references('id')->on('sj_entities')->cascadeOnDelete();
 
             // Neuer Unique-Index: eine E-Mail kann mehrere Entities haben
             $table->unique(['team_id', 'email', 'entity_id']);
@@ -28,7 +36,12 @@ return new class extends Migration
     {
         Schema::table('sj_entity_owners', function (Blueprint $table) {
             $table->dropUnique(['team_id', 'email', 'entity_id']);
+            $table->dropForeign(['entity_id']);
+        });
+
+        Schema::table('sj_entity_owners', function (Blueprint $table) {
             $table->unsignedBigInteger('entity_id')->nullable()->change();
+            $table->foreign('entity_id')->references('id')->on('sj_entities')->nullOnDelete();
             $table->unique(['team_id', 'email']);
         });
     }

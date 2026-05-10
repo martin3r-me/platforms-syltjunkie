@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Platform\Core\Http\Controllers\ApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\Concerns\ResolvesPublicTeam;
 use Platform\Syltjunkie\Models\SjEntity;
+use Platform\Syltjunkie\Models\SjImage;
 
 class EntityApiController extends ApiController
 {
@@ -270,10 +271,7 @@ class EntityApiController extends ApiController
                 'status' => $e->status,
             ])->values(),
             'upcoming_events_total' => $entity->upcomingEvents()->count(),
-            'blocks' => $entity->contentBlocks->map(fn ($b) => [
-                'type' => $b->block_type,
-                'content' => $b->content,
-            ])->values(),
+            'blocks' => $this->resolveBlocks($entity->contentBlocks),
             'has_owner' => $entity->owner !== null,
         ];
 
@@ -464,6 +462,54 @@ class EntityApiController extends ApiController
         }
 
         return $missing;
+    }
+
+    protected function resolveBlocks($contentBlocks): array
+    {
+        $blocks = $contentBlocks->map(fn ($b) => [
+            'type' => $b->block_type,
+            'content' => $b->content,
+        ])->values()->toArray();
+
+        // Collect all image IDs from gallery blocks
+        $imageIds = collect($blocks)
+            ->where('type', 'gallery')
+            ->pluck('content.image_ids')
+            ->flatten()
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($imageIds->isEmpty()) {
+            return $blocks;
+        }
+
+        $images = SjImage::with('contextFile')
+            ->whereIn('id', $imageIds)
+            ->get()
+            ->keyBy('id');
+
+        return collect($blocks)->map(function ($block) use ($images) {
+            if ($block['type'] !== 'gallery' || empty($block['content']['image_ids'])) {
+                return $block;
+            }
+
+            $block['content']['images'] = collect($block['content']['image_ids'])
+                ->map(fn ($id) => $images->get($id))
+                ->filter()
+                ->map(fn ($img) => [
+                    'id' => $img->id,
+                    'title' => $img->title,
+                    'url' => $img->url,
+                    'thumbnail_url' => $img->thumbnail_url,
+                ])
+                ->values()
+                ->toArray();
+
+            unset($block['content']['image_ids']);
+
+            return $block;
+        })->values()->toArray();
     }
 
     protected function paginatedWithMeta($paginator): JsonResponse

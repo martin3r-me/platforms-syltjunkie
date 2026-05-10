@@ -8,6 +8,7 @@ use Platform\Syltjunkie\Http\Controllers\Api\LandingApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\MapApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\WeatherApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\ShopApiController;
+use Platform\Syltjunkie\Http\Controllers\Api\ImageApiController;
 
 Route::get('/entities', [EntityApiController::class, 'index']);
 Route::get('/entities/{slug}', [EntityApiController::class, 'show']);
@@ -21,6 +22,8 @@ Route::get('/content/{slug}', [ContentApiController::class, 'show']);
 Route::get('/map', [MapApiController::class, 'index']);
 Route::get('/weather', [WeatherApiController::class, 'index']);
 Route::get('/weather/{slug}', [WeatherApiController::class, 'show']);
+Route::get('/images', [ImageApiController::class, 'index']);
+Route::get('/images/{uuid}', [ImageApiController::class, 'show']);
 Route::get('/shop/products', [ShopApiController::class, 'products']);
 Route::get('/shop/products/{slug}', [ShopApiController::class, 'product']);
 Route::post('/shop/orders', [ShopApiController::class, 'createOrder']);

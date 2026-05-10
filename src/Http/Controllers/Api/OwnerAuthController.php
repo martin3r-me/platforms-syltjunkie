@@ -10,6 +10,7 @@ use Platform\Core\Http\Controllers\ApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\Concerns\ResolvesPublicTeam;
 use Platform\Syltjunkie\Http\Middleware\SjOwnerAuthenticate;
 use Platform\Syltjunkie\Mail\SjMagicLinkMail;
+use Platform\Syltjunkie\Models\SjEntity;
 use Platform\Syltjunkie\Models\SjEntityOwner;
 
 class OwnerAuthController extends ApiController
@@ -21,6 +22,7 @@ class OwnerAuthController extends ApiController
         $validated = $request->validate([
             'email' => 'required|email|max:255',
             'name' => 'nullable|string|max:255',
+            'entity_slug' => 'nullable|string|max:255',
         ]);
 
         $teamId = $this->resolveTeamId($request);
@@ -35,16 +37,25 @@ class OwnerAuthController extends ApiController
 
         RateLimiter::hit($rateLimitKey, 3600);
 
+        // Entity per Slug aufloesen, falls mitgegeben
+        $entityId = null;
+        if (!empty($validated['entity_slug'])) {
+            $entityId = SjEntity::where('team_id', $teamId)
+                ->where('slug', $validated['entity_slug'])
+                ->value('id');
+        }
+
         $owner = SjEntityOwner::where('team_id', $teamId)
             ->where('email', $email)
             ->first();
 
         if (!$owner) {
-            // Neu: pending-Eintrag anlegen, Admin sieht das im Backend
+            // Neu: pending-Eintrag mit Entity-Wunsch anlegen
             SjEntityOwner::create([
                 'team_id' => $teamId,
                 'email' => $email,
                 'name' => $validated['name'] ?? null,
+                'entity_id' => $entityId,
                 'status' => 'pending',
             ]);
         } elseif ($owner->status === 'approved') {

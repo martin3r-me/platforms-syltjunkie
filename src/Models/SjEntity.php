@@ -105,7 +105,7 @@ class SjEntity extends Model
 
     public function entityTypes(): BelongsToMany
     {
-        return $this->belongsToMany(SjEntityType::class, 'sj_entity_entity_type')
+        return $this->belongsToMany(SjEntityType::class, 'sj_entity_entity_type', 'entity_id', 'entity_type_id')
             ->withPivot(['is_primary', 'order'])
             ->withTimestamps()
             ->orderByPivot('order');

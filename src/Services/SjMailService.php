@@ -10,26 +10,21 @@ class SjMailService
     public static function sendMagicLink(
         SjEntityOwner $owner,
         string $token,
-        ?string $redirectUrl = null,
     ): void {
         $from = $owner->from_address;
-
         if (!$from) {
             throw new \RuntimeException("Keine Absender-Adresse für Owner #{$owner->id} ({$owner->email}) hinterlegt.");
         }
 
-        $frontendUrl = rtrim(config('syltjunkie.owner_auth.frontend_url', 'https://syltjunkie.de'), '/');
-
-        $params = [
-            'email' => $owner->email,
-            'token' => $token,
-        ];
-
-        if ($redirectUrl) {
-            $params['redirect'] = $redirectUrl;
+        $redirectUrl = $owner->redirect_url;
+        if (!$redirectUrl) {
+            throw new \RuntimeException("Keine Redirect-URL für Owner #{$owner->id} ({$owner->email}) hinterlegt.");
         }
 
-        $magicLink = $frontendUrl . '/auth/verify?' . http_build_query($params);
+        $magicLink = rtrim($redirectUrl, '/') . '?' . http_build_query([
+            'email' => $owner->email,
+            'token' => $token,
+        ]);
         $ownerName = $owner->name ?? $owner->email;
 
         $html = view('syltjunkie::emails.magic-link', [

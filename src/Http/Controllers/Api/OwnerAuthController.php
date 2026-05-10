@@ -66,14 +66,18 @@ class OwnerAuthController extends ApiController
                 ->approved()
                 ->first();
 
-            // from_address auf allen Einträgen dieser E-Mail aktualisieren
+            // from_address + redirect_url auf allen Einträgen dieser E-Mail aktualisieren
             SjEntityOwner::where('team_id', $teamId)
                 ->where('email', $email)
-                ->update(['from_address' => $fromAddress]);
+                ->update([
+                    'from_address' => $fromAddress,
+                    'redirect_url' => $redirectUrl,
+                ]);
             $owner->from_address = $fromAddress;
+            $owner->redirect_url = $redirectUrl;
 
             $token = $owner->generateToken();
-            SjMailService::sendMagicLink($owner, $token, $redirectUrl);
+            SjMailService::sendMagicLink($owner, $token);
 
             return $this->success(null, 'Wir haben deine Anfrage erhalten.');
         }
@@ -107,6 +111,7 @@ class OwnerAuthController extends ApiController
                 'entity_id' => $entityId,
                 'status' => 'pending',
                 'from_address' => $fromAddress,
+                'redirect_url' => $redirectUrl,
             ]);
         }
 

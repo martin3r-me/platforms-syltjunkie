@@ -37,16 +37,6 @@
                 Bearbeiten
             </button>
 
-            @if($card->entity_type_id)
-                <button
-                    wire:click="convertToEntity({{ $card->id }})"
-                    wire:confirm="Card in Entity konvertieren?"
-                    class="text-xs text-indigo-600 hover:text-indigo-800 transition-colors ml-auto"
-                >
-                    @svg('heroicon-o-arrow-right-circle', 'w-3.5 h-3.5 inline')
-                    Entity
-                </button>
-            @endif
         </div>
     </div>
 </x-ui-kanban-card>

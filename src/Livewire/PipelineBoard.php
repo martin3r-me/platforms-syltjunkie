@@ -4,8 +4,6 @@ namespace Platform\Syltjunkie\Livewire;
 
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
-use Platform\Syltjunkie\Models\SjEntity;
-use Platform\Syltjunkie\Models\SjEntityUrl;
 use Platform\Syltjunkie\Models\SjEntityType;
 use Platform\Syltjunkie\Models\SjPipelineCard;
 use Platform\Syltjunkie\Models\SjPipelineSlot;
@@ -152,48 +150,6 @@ class PipelineBoard extends Component
                 $slot->save();
             }
         }
-    }
-
-    public function convertToEntity(int $cardId): void
-    {
-        $team = Auth::user()->currentTeam;
-        $card = SjPipelineCard::where('team_id', $team->id)->active()->findOrFail($cardId);
-
-        if (empty($card->name) || empty($card->entity_type_id)) {
-            session()->flash('error', 'Name und Entity-Typ müssen gesetzt sein.');
-            return;
-        }
-
-        $entity = SjEntity::create([
-            'team_id' => $team->id,
-            'name' => $card->name,
-            'entity_type_id' => $card->entity_type_id,
-            'latitude' => $card->latitude,
-            'longitude' => $card->longitude,
-            'source' => 'manuell',
-            'status' => 'aktiv',
-            'is_active' => true,
-        ]);
-
-        $entity->syncEntityTypes([$card->entity_type_id]);
-
-        if ($card->url) {
-            SjEntityUrl::create([
-                'team_id' => $team->id,
-                'entity_id' => $entity->id,
-                'url' => $card->url,
-                'platform' => 'website',
-                'is_primary' => true,
-                'is_active' => true,
-            ]);
-        }
-
-        $card->update([
-            'converted_at' => now(),
-            'converted_entity_id' => $entity->id,
-        ]);
-
-        session()->flash('success', "Entity \"{$entity->name}\" erstellt.");
     }
 
     public function render()

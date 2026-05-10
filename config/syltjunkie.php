@@ -50,6 +50,14 @@ return [
         ],
     ],
 
+    'shop' => [
+        'enabled' => env('SYLTJUNKIE_SHOP_ENABLED', true),
+        'currency' => 'EUR',
+        'order_number_prefix' => 'SJ',
+        'shipping_flat_cents' => 490,
+        'free_shipping_from_cents' => 5000,
+    ],
+
     'weather' => [
         'enabled' => env('SYLTJUNKIE_WEATHER_ENABLED', true),
         'api_base_url' => 'https://api.brightsky.dev',

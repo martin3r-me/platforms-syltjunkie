@@ -18,6 +18,10 @@ use Platform\Syltjunkie\Livewire\ContentPieceIndex;
 use Platform\Syltjunkie\Livewire\ContentPieceEditor;
 use Platform\Syltjunkie\Livewire\ChannelPostComposer;
 use Platform\Syltjunkie\Livewire\WeatherIndex;
+use Platform\Syltjunkie\Livewire\ShopProductIndex;
+use Platform\Syltjunkie\Livewire\ShopProductEditor;
+use Platform\Syltjunkie\Livewire\ShopOrderIndex;
+use Platform\Syltjunkie\Livewire\ShopOrderDetail;
 
 Route::get('/', Dashboard::class)->name('syltjunkie.dashboard');
 Route::get('/entities', EntityIndex::class)->name('syltjunkie.entities.index');
@@ -38,3 +42,8 @@ Route::get('/content/{contentPiece}/edit', ContentPieceEditor::class)->name('syl
 Route::get('/posts', ChannelPostIndex::class)->name('syltjunkie.posts.index');
 Route::get('/posts/create', ChannelPostComposer::class)->name('syltjunkie.posts.create');
 Route::get('/weather', WeatherIndex::class)->name('syltjunkie.weather.index');
+Route::get('/shop/products', ShopProductIndex::class)->name('syltjunkie.shop.products.index');
+Route::get('/shop/products/create', ShopProductEditor::class)->name('syltjunkie.shop.products.create');
+Route::get('/shop/products/{product}/edit', ShopProductEditor::class)->name('syltjunkie.shop.products.edit');
+Route::get('/shop/orders', ShopOrderIndex::class)->name('syltjunkie.shop.orders.index');
+Route::get('/shop/orders/{order}', ShopOrderDetail::class)->name('syltjunkie.shop.orders.detail');

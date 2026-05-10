@@ -4,13 +4,12 @@ namespace Platform\Syltjunkie\Http\Controllers\Api;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Platform\Core\Http\Controllers\ApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\Concerns\ResolvesPublicTeam;
 use Platform\Syltjunkie\Http\Middleware\SjOwnerAuthenticate;
-use Platform\Syltjunkie\Mail\SjMagicLinkMail;
 use Platform\Syltjunkie\Models\SjEntity;
+use Platform\Syltjunkie\Services\SjMailService;
 use Platform\Syltjunkie\Models\SjEntityOwner;
 
 class OwnerAuthController extends ApiController
@@ -76,11 +75,7 @@ class OwnerAuthController extends ApiController
                 ->first();
 
             $token = $owner->generateToken();
-            $mailable = new SjMagicLinkMail($owner, $token, $redirectUrl);
-            if ($fromAddress) {
-                $mailable->from($fromAddress);
-            }
-            Mail::to($email)->send($mailable);
+            SjMailService::sendMagicLink($owner, $token, $redirectUrl, $fromAddress);
 
             return $this->success(null, 'Wir haben deine Anfrage erhalten.');
         }

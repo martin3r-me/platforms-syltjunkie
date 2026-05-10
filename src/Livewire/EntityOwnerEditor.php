@@ -3,11 +3,10 @@
 namespace Platform\Syltjunkie\Livewire;
 
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
 use Livewire\Component;
-use Platform\Syltjunkie\Mail\SjMagicLinkMail;
 use Platform\Syltjunkie\Models\SjEntity;
 use Platform\Syltjunkie\Models\SjEntityOwner;
+use Platform\Syltjunkie\Services\SjMailService;
 
 class EntityOwnerEditor extends Component
 {
@@ -49,12 +48,7 @@ class EntityOwnerEditor extends Component
         // Bei Freigabe automatisch Magic Link senden
         if ($this->status === 'approved' && $wasNotApproved) {
             $token = $this->owner->generateToken();
-            $mailable = new SjMagicLinkMail($this->owner, $token);
-            $fromAddresses = config('syltjunkie.owner_auth.allowed_from_addresses', []);
-            if (!empty($fromAddresses[0])) {
-                $mailable->from($fromAddresses[0]);
-            }
-            Mail::to($this->owner->email)->send($mailable);
+            SjMailService::sendMagicLink($this->owner, $token);
             session()->flash('success', 'Inhaber freigegeben und Magic Link gesendet.');
         } else {
             session()->flash('success', 'Inhaber gespeichert.');
@@ -69,12 +63,7 @@ class EntityOwnerEditor extends Component
         }
 
         $token = $this->owner->generateToken();
-        $mailable = new SjMagicLinkMail($this->owner, $token);
-        $fromAddresses = config('syltjunkie.owner_auth.allowed_from_addresses', []);
-        if (!empty($fromAddresses[0])) {
-            $mailable->from($fromAddresses[0]);
-        }
-        Mail::to($this->owner->email)->send($mailable);
+        SjMailService::sendMagicLink($this->owner, $token);
 
         session()->flash('success', 'Magic Link gesendet.');
     }

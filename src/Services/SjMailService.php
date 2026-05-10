@@ -33,7 +33,8 @@ class SjMailService
         ])->render();
 
         $from = $fromAddress
-            ?? config('syltjunkie.owner_auth.allowed_from_addresses.0', 'noreply@syltjunkie.de');
+            ?? config('syltjunkie.owner_auth.allowed_from_addresses.0')
+            ?? env('POSTMARK_FROM', config('mail.from.address'));
 
         $serverToken = env('POSTMARK_SERVER_TOKEN');
 

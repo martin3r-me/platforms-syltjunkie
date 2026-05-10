@@ -88,6 +88,13 @@
                                             >
                                                 Bearbeiten
                                             </a>
+                                            <button
+                                                wire:click="delete({{ $owner->id }})"
+                                                wire:confirm="Inhaber endgültig löschen?"
+                                                class="text-[12px] text-red-600 hover:text-red-800 font-medium"
+                                            >
+                                                Löschen
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>

@@ -55,6 +55,14 @@ class EntityOwnerIndex extends Component
         $owner->update(['status' => 'blocked']);
     }
 
+    public function delete(int $ownerId): void
+    {
+        $team = Auth::user()->currentTeam;
+        $owner = SjEntityOwner::where('team_id', $team->id)->findOrFail($ownerId);
+
+        $owner->delete();
+    }
+
     public function render()
     {
         $team = Auth::user()->currentTeam;

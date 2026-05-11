@@ -4,6 +4,7 @@ namespace Platform\Syltjunkie\Services;
 
 use Postmark\PostmarkClient;
 use Platform\Syltjunkie\Models\SjEntityOwner;
+use Platform\Syltjunkie\Models\SjUser;
 
 class SjMailService
 {
@@ -39,6 +40,35 @@ class SjMailService
         $client->sendEmail(
             $from,
             $owner->email,
+            'Dein Login-Link für Syltjunkie',
+            $html,
+        );
+    }
+
+    public static function sendUserMagicLink(
+        SjUser $user,
+        string $token,
+        string $fromAddress,
+        string $redirectUrl,
+    ): void {
+        $magicLink = rtrim($redirectUrl, '/') . '?' . http_build_query([
+            'email' => $user->email,
+            'token' => $token,
+        ]);
+        $ownerName = $user->name ?? $user->email;
+
+        $html = view('syltjunkie::emails.magic-link', [
+            'magicLink' => $magicLink,
+            'ownerName' => $ownerName,
+        ])->render();
+
+        $serverToken = env('POSTMARK_SERVER_TOKEN');
+
+        $client = new PostmarkClient($serverToken);
+
+        $client->sendEmail(
+            $fromAddress,
+            $user->email,
             'Dein Login-Link für Syltjunkie',
             $html,
         );

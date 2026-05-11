@@ -11,6 +11,8 @@ use Platform\Syltjunkie\Http\Controllers\Api\ShopApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\ImageApiController;
 use Platform\Syltjunkie\Http\Controllers\Api\OwnerAuthController;
 use Platform\Syltjunkie\Http\Controllers\Api\OwnerApiController;
+use Platform\Syltjunkie\Http\Controllers\Api\UserAuthController;
+use Platform\Syltjunkie\Http\Controllers\Api\UserApiController;
 
 // Owner Auth (Sanctum-Token vom Frontend reicht)
 Route::post('/auth/request', [OwnerAuthController::class, 'requestLink']);
@@ -21,6 +23,15 @@ Route::middleware('sj.owner.auth')->group(function () {
     Route::get('/owner/me', [OwnerApiController::class, 'me']);
     Route::get('/owner/entities/{slug}', [OwnerApiController::class, 'entity']);
     Route::put('/owner/entities/{slug}', [OwnerApiController::class, 'updateEntity']);
+});
+
+// User Auth
+Route::post('/user-auth/request', [UserAuthController::class, 'requestLink']);
+Route::post('/user-auth/verify', [UserAuthController::class, 'verify']);
+
+// User API (Bearer-Token via sj.user.auth)
+Route::middleware('sj.user.auth')->group(function () {
+    Route::get('/user/me', [UserApiController::class, 'me']);
 });
 
 Route::get('/entities', [EntityApiController::class, 'index']);

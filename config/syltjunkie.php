@@ -73,6 +73,13 @@ return [
         'rate_limit_per_hour' => 3,
     ],
 
+    'user_auth' => [
+        'enabled' => env('SYLTJUNKIE_USER_AUTH_ENABLED', true),
+        'token_ttl_minutes' => 30,
+        'session_ttl_hours' => 24,
+        'rate_limit_per_hour' => 5,
+    ],
+
     'sidebar' => [
         [
             'group' => 'Entity Graph',

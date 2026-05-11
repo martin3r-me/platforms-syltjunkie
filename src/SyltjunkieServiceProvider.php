@@ -26,6 +26,11 @@ class SyltjunkieServiceProvider extends ServiceProvider
             \Platform\Syltjunkie\Http\Middleware\SjOwnerAuthenticate::class
         );
 
+        $this->app['router']->aliasMiddleware(
+            'sj.user.auth',
+            \Platform\Syltjunkie\Http\Middleware\SjUserAuthenticate::class
+        );
+
         if (
             config()->has('syltjunkie.routing') &&
             config()->has('syltjunkie.navigation') &&

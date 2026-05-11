@@ -32,6 +32,7 @@ Route::post('/user-auth/verify', [UserAuthController::class, 'verify']);
 // User API (Bearer-Token via sj.user.auth)
 Route::middleware('sj.user.auth')->group(function () {
     Route::get('/user/me', [UserApiController::class, 'me']);
+    Route::get('/user/points', [UserApiController::class, 'pointsHistory']);
 });
 
 Route::get('/entities', [EntityApiController::class, 'index']);

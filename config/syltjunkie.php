@@ -73,6 +73,17 @@ return [
         'rate_limit_per_hour' => 3,
     ],
 
+    'gamification' => [
+        'enabled' => env('SYLTJUNKIE_GAMIFICATION_ENABLED', true),
+        'levels' => [
+            ['key' => 'tagesgast',  'name' => 'Tagesgast',  'min_points' => 0],
+            ['key' => 'urlauber',   'name' => 'Urlauber',    'min_points' => 100],
+            ['key' => 'stammgast',  'name' => 'Stammgast',   'min_points' => 500],
+            ['key' => 'insulaner',  'name' => 'Insulaner',   'min_points' => 1500],
+            ['key' => 'syltjunkie', 'name' => 'Syltjunkie',  'min_points' => 5000],
+        ],
+    ],
+
     'user_auth' => [
         'enabled' => env('SYLTJUNKIE_USER_AUTH_ENABLED', true),
         'token_ttl_minutes' => 30,
@@ -103,6 +114,16 @@ return [
                     'label' => 'Entity Types',
                     'route' => 'syltjunkie.entity-types.index',
                     'icon'  => 'heroicon-o-tag',
+                ],
+            ],
+        ],
+        [
+            'group' => 'Community',
+            'items' => [
+                [
+                    'label' => 'Users',
+                    'route' => 'syltjunkie.users.index',
+                    'icon'  => 'heroicon-o-users',
                 ],
             ],
         ],

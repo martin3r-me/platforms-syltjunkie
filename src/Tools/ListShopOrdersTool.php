@@ -26,7 +26,7 @@ class ListShopOrdersTool implements ToolContract, ToolMetadataContract
 
     public function getSchema(): array
     {
-        return $this->mergeSchemas([
+        return $this->mergeSchemas($this->getStandardGetSchema(), [
             'type' => 'object',
             'properties' => [
                 'team_id' => [

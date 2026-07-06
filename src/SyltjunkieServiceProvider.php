@@ -143,6 +143,12 @@ class SyltjunkieServiceProvider extends ServiceProvider
             resolve(\Platform\Core\Services\ErrorReporterRegistry::class)
                 ->register('syltjunkie', 'Platform\\Syltjunkie');
         } catch (\Throwable $e) {}
+
+        // KeyResultMetricProvider registrieren (KR-Metriken aus SYLTJUNKIE)
+        try {
+            resolve(\Platform\Core\Services\KeyResultMetricRegistry::class)
+                ->register(new \Platform\Syltjunkie\Organization\SjKeyResultMetricProvider());
+        } catch (\Throwable $e) {}
     }
 
     protected function registerTools(): void

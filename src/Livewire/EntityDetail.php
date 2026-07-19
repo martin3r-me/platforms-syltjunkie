@@ -195,6 +195,13 @@ class EntityDetail extends Component
             ->limit(10)
             ->get();
 
+        // Zentrale SEO-Signale (Keystone) — nach sj_entity_url-ID, guarded.
+        $seoSignals = [];
+        if ($entityUrlIds->isNotEmpty() && app()->bound(\Platform\Core\Contracts\SeoSignalServiceInterface::class)) {
+            $seoSignals = app(\Platform\Core\Contracts\SeoSignalServiceInterface::class)
+                ->getSignalsBySource((int) $this->entity->team_id, 'syltjunkie', $entityUrlIds->all());
+        }
+
         $entityImages = $this->entity->images()
             ->with('contextFile.variants')
             ->get();
@@ -232,6 +239,7 @@ class EntityDetail extends Component
             'keywordRankings' => $keywordRankings,
             'recentChanges' => $recentChanges,
             'entitySignals' => $entitySignals,
+            'seoSignals' => $seoSignals,
             'entityImages' => $entityImages,
             'entityPosts' => $entityPosts,
             'currentWeather' => $currentWeather,

@@ -392,6 +392,47 @@
                     </div>
                     @endif
 
+                    {{-- SEO-Signale (zentral aus dem SEO-Modul gemessen) --}}
+                    @php $seoWebsiteUrls = $entity->entityUrls->where('platform', 'website'); @endphp
+                    @if(!empty($seoSignals) && $seoWebsiteUrls->count())
+                    <div class="bg-white rounded-lg border border-gray-200 p-4">
+                        <h2 class="text-[13px] font-semibold text-gray-700 mb-3">SEO-Signale <span class="text-[10px] font-normal text-gray-400">· zentral gemessen</span></h2>
+                        @foreach($seoWebsiteUrls as $u)
+                            @php $s = $seoSignals[$u->id] ?? null; @endphp
+                            @if($s)
+                            <div class="mb-4 last:mb-0">
+                                <div class="text-[11px] text-gray-500 truncate mb-2">{{ $s['url'] }}</div>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <div>
+                                        <div class="text-[10px] text-gray-400 uppercase tracking-wider">Sichtbarkeit</div>
+                                        <div class="text-[15px] font-semibold text-gray-800 tabular-nums">{{ number_format($s['visibility'], 0) }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-[10px] text-gray-400 uppercase tracking-wider">Traffic (30T)</div>
+                                        <div class="text-[15px] font-semibold text-gray-800 tabular-nums">{{ number_format($s['traffic']['visitors_30d']) }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-[10px] text-gray-400 uppercase tracking-wider">GSC Clicks</div>
+                                        <div class="text-[15px] font-semibold text-gray-800 tabular-nums">{{ $s['gsc'] ? number_format($s['gsc']['clicks']) : '—' }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-[10px] text-gray-400 uppercase tracking-wider">Backlinks</div>
+                                        <div class="text-[15px] font-semibold text-gray-800 tabular-nums">{{ number_format($s['backlinks']['count']) }}</div>
+                                    </div>
+                                </div>
+                                @if(!empty($s['rankings']))
+                                <div class="mt-2 flex flex-wrap gap-1">
+                                    @foreach(array_slice($s['rankings'], 0, 6) as $r)
+                                        <span class="text-[10px] px-1.5 py-0.5 bg-gray-50 border border-gray-200 rounded text-gray-600">{{ $r['keyword'] }} · #{{ $r['position'] }}</span>
+                                    @endforeach
+                                </div>
+                                @endif
+                            </div>
+                            @endif
+                        @endforeach
+                    </div>
+                    @endif
+
                     {{-- Keyword Rankings --}}
                     @if($keywordRankings->count())
                     <div class="bg-white rounded-lg border border-gray-200 p-4">

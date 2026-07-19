@@ -35,10 +35,18 @@ class FetchEntityData extends Command
         $type = $this->option('type');
         $detectTrends = $this->option('detect-trends');
 
+        // Retire-at-Parity (S4): im 'central'-Modus ist das zentrale SEO-Modul für
+        // Rankings maßgeblich — die lokale Ranking-Messung wird stillgelegt (kein
+        // paralleler DataForSEO-Spend, keine Doppel-Daten). Google Business bleibt lokal.
+        $rankingsRetired = config('syltjunkie.seo.mode') === 'central';
+
         $this->info('Syltjunkie Entity Data Fetch');
         $this->info('============================');
         if ($dryRun) {
             $this->warn('DRY-RUN Modus — keine API-Calls');
+        }
+        if ($rankingsRetired && in_array($type, ['all', 'rankings'])) {
+            $this->warn('SEO-Modus = central — lokale Keyword-Ranking-Messung ist stillgelegt (zentrales SEO-Modul misst).');
         }
         $this->newLine();
 
@@ -77,7 +85,7 @@ class FetchEntityData extends Command
                 $totalGoogleFetched += $fetched;
             }
 
-            if (in_array($type, ['all', 'rankings'])) {
+            if (in_array($type, ['all', 'rankings']) && !$rankingsRetired) {
                 $fetched = $this->fetchRankings($user, $teamId, $dryRun);
                 $totalRankingsFetched += $fetched;
             }

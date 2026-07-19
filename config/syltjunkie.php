@@ -8,6 +8,21 @@ return [
 
     'guard' => 'web',
 
+    // Retire-at-Parity-Schalter für die parallele SEO-Messung (S4).
+    // Das zentrale SEO-Modul misst URLs zentral (Keystone → SeoSignalService).
+    // Sobald die zentrale Messung für Syltjunkie belastbar ist, wird die lokale
+    // Ranking-Messung stillgelegt — reversibel, ohne Datenverlust.
+    //   'hybrid'  = lokal messen + zentrale Signale zeigen (Default, Übergang)
+    //   'central' = zentrale Signale sind maßgeblich; lokale Ranking-Messung
+    //               (syltjunkie:fetch-entity-data --type=rankings) wird übersprungen
+    //               und die lokale Ranking-UI ausgeblendet, sobald zentrale Signale
+    //               vorliegen (Parität). Google Business, Google Trends, Trend-Signale
+    //               und Page-Change-Monitoring bleiben lokal.
+    //   'local'   = nur lokale Messung (Offline-/Fallback-Betrieb).
+    'seo' => [
+        'mode' => env('SYLTJUNKIE_SEO_MODE', 'hybrid'),
+    ],
+
     'navigation' => [
         'route' => 'syltjunkie.dashboard',
         'icon'  => 'heroicon-o-globe-alt',

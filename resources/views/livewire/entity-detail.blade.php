@@ -111,7 +111,7 @@
                 $urlSnapshot = $websiteUrl?->latestSnapshot;
                 $pageSnapshot = $websiteUrl?->latestPageSnapshot;
             @endphp
-            @if($urlSnapshot || $pageSnapshot)
+            @if(($urlSnapshot || $pageSnapshot) && !$centralAuthoritative)
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 @if($urlSnapshot && $urlSnapshot->keywords_count)
                 <div class="bg-white rounded-lg border border-gray-200 p-3">
@@ -396,7 +396,7 @@
                     @php $seoWebsiteUrls = $entity->entityUrls->where('platform', 'website'); @endphp
                     @if(!empty($seoSignals) && $seoWebsiteUrls->count())
                     <div class="bg-white rounded-lg border border-gray-200 p-4">
-                        <h2 class="text-[13px] font-semibold text-gray-700 mb-3">SEO-Signale <span class="text-[10px] font-normal text-gray-400">· zentral gemessen</span></h2>
+                        <h2 class="text-[13px] font-semibold text-gray-700 mb-3">SEO-Signale <span class="text-[10px] font-normal text-gray-400">· zentral gemessen{{ $centralAuthoritative ? ' · maßgeblich' : '' }}</span></h2>
                         @foreach($seoWebsiteUrls as $u)
                             @php $s = $seoSignals[$u->id] ?? null; @endphp
                             @if($s)

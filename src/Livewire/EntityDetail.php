@@ -162,10 +162,24 @@ class EntityDetail extends Component
             'entityUrls.latestPageSnapshot',
         ]);
 
-        // Keyword-Rankings für alle Entity-URLs (latest per keyword)
         $entityUrlIds = $this->entity->entityUrls->pluck('id');
+
+        // Zentrale SEO-Signale (Keystone) — nach sj_entity_url-ID, guarded.
+        $seoSignals = [];
+        if ($entityUrlIds->isNotEmpty() && app()->bound(\Platform\Core\Contracts\SeoSignalServiceInterface::class)) {
+            $seoSignals = app(\Platform\Core\Contracts\SeoSignalServiceInterface::class)
+                ->getSignalsBySource((int) $this->entity->team_id, 'syltjunkie', $entityUrlIds->all());
+        }
+
+        // Retire-at-Parity (S4): im 'central'-Modus ist das zentrale SEO-Modul
+        // maßgeblich — aber erst, wenn wirklich Signale vorliegen. Bis dahin bleibt
+        // die lokale Ranking-Ansicht als Fallback sichtbar (kein Blank-State).
+        $seoMode = config('syltjunkie.seo.mode', 'hybrid');
+        $centralAuthoritative = $seoMode === 'central' && !empty($seoSignals);
+
+        // Keyword-Rankings für alle Entity-URLs (latest per keyword) — lokal.
         $keywordRankings = collect();
-        if ($entityUrlIds->isNotEmpty()) {
+        if ($entityUrlIds->isNotEmpty() && !$centralAuthoritative) {
             $keywordRankings = SjKeywordRanking::whereIn('entity_url_id', $entityUrlIds)
                 ->with('keyword:id,keyword,search_volume,cpc_cents,keyword_difficulty,monthly_volumes,peak_month,seasonality_index')
                 ->orderBy('position')
@@ -194,13 +208,6 @@ class EntityDetail extends Component
             ->orderByDesc('detected_at')
             ->limit(10)
             ->get();
-
-        // Zentrale SEO-Signale (Keystone) — nach sj_entity_url-ID, guarded.
-        $seoSignals = [];
-        if ($entityUrlIds->isNotEmpty() && app()->bound(\Platform\Core\Contracts\SeoSignalServiceInterface::class)) {
-            $seoSignals = app(\Platform\Core\Contracts\SeoSignalServiceInterface::class)
-                ->getSignalsBySource((int) $this->entity->team_id, 'syltjunkie', $entityUrlIds->all());
-        }
 
         $entityImages = $this->entity->images()
             ->with('contextFile.variants')
@@ -240,6 +247,7 @@ class EntityDetail extends Component
             'recentChanges' => $recentChanges,
             'entitySignals' => $entitySignals,
             'seoSignals' => $seoSignals,
+            'centralAuthoritative' => $centralAuthoritative,
             'entityImages' => $entityImages,
             'entityPosts' => $entityPosts,
             'currentWeather' => $currentWeather,

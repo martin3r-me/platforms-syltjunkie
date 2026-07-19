@@ -924,7 +924,17 @@
                                     <span class="inline-flex w-2 h-2 rounded-full {{ $signal->severity === 'action' ? 'bg-red-400' : ($signal->severity === 'watch' ? 'bg-yellow-400' : 'bg-blue-300') }}"></span>
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <div class="text-gray-900 font-medium">{{ $signal->title }}</div>
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div class="text-gray-900 font-medium">{{ $signal->title }}</div>
+                                        @if($signal->signal_type === 'seo_recommendation')
+                                            <button wire:click="resolveSeoSignal({{ $signal->id }})" wire:loading.attr="disabled"
+                                                    class="flex-shrink-0 inline-flex items-center gap-1 text-[10px] text-gray-400 hover:text-green-600 transition-colors disabled:opacity-50"
+                                                    title="Erledigt — schließt auch die zentrale Empfehlung">
+                                                @svg('heroicon-o-check-circle', 'w-3.5 h-3.5')
+                                                <span>Erledigt</span>
+                                            </button>
+                                        @endif
+                                    </div>
                                     @if($signal->description)
                                         <div class="text-[11px] text-gray-400 mt-0.5 truncate">{{ $signal->description }}</div>
                                     @endif

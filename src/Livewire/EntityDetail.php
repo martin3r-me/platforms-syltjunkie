@@ -191,7 +191,7 @@ class EntityDetail extends Component
                     'description' => 'Zentrale SEO-Empfehlung · zentral gemessen',
                     'detected_at' => now(),
                     'status' => 'new',
-                    'context' => ['source' => 'seo', 'ref' => $ref, 'rec_type' => $rec['type'] ?? null],
+                    'context' => ['source' => 'seo', 'ref' => $ref, 'rec_type' => $rec['type'] ?? null, 'seo_signal_id' => $rec['id'] ?? null],
                 ]);
                 $imported++;
             }
@@ -200,6 +200,34 @@ class EntityDetail extends Component
         $this->seoImportNotice = $imported > 0
             ? "{$imported} SEO-Empfehlung(en) in die Signale übernommen."
             : 'Keine neuen SEO-Empfehlungen — alles bereits übernommen.';
+    }
+
+    /**
+     * Ein materialisiertes SEO-Empfehlungs-Signal erledigen — und den Loop schließen:
+     * die zentrale Empfehlung im SEO-Modul mit-schließen (guarded, S4-konform).
+     */
+    public function resolveSeoSignal(int $signalId): void
+    {
+        $signal = SjTrendSignal::where('entity_id', $this->entity->id)
+            ->where('signal_type', 'seo_recommendation')
+            ->find($signalId);
+        if (! $signal) {
+            return;
+        }
+
+        // Zentrale Empfehlung schließen (Write-back über den Contract).
+        $centralId = $signal->context['seo_signal_id'] ?? null;
+        if ($centralId && app()->bound(\Platform\Core\Contracts\SeoSignalServiceInterface::class)) {
+            try {
+                app(\Platform\Core\Contracts\SeoSignalServiceInterface::class)
+                    ->resolveSignal((int) $this->entity->team_id, (int) $centralId);
+            } catch (\Throwable $e) {
+                // Der lokale Marker wird trotzdem geschlossen; zentrale Quelle darf nie brechen.
+            }
+        }
+
+        $signal->update(['status' => 'resolved']);
+        $this->seoImportNotice = 'Empfehlung erledigt — auch zentral geschlossen.';
     }
 
     /**

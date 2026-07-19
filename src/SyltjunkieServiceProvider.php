@@ -81,8 +81,12 @@ class SyltjunkieServiceProvider extends ServiceProvider
                 \Platform\Syltjunkie\Console\Commands\MatchNearbyImages::class,
                 \Platform\Syltjunkie\Console\Commands\FetchWeather::class,
                 \Platform\Syltjunkie\Console\Commands\BackfillImageTakenAt::class,
+                \Platform\Syltjunkie\Console\Commands\SyncSeoUrls::class,
             ]);
         }
+
+        // Entitäts-URLs ins zentrale SEO-Modul spiegeln (guarded, lose gekoppelt).
+        \Platform\Syltjunkie\Models\SjEntityUrl::observe(\Platform\Syltjunkie\Observers\SjEntityUrlObserver::class);
 
         $this->app->booted(function () {
             $schedule = $this->app->make(Schedule::class);

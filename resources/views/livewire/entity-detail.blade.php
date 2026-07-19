@@ -396,7 +396,19 @@
                     @php $seoWebsiteUrls = $entity->entityUrls->where('platform', 'website'); @endphp
                     @if(!empty($seoSignals) && $seoWebsiteUrls->count())
                     <div class="bg-white rounded-lg border border-gray-200 p-4">
-                        <h2 class="text-[13px] font-semibold text-gray-700 mb-3">SEO-Signale <span class="text-[10px] font-normal text-gray-400">· zentral gemessen{{ $centralAuthoritative ? ' · maßgeblich' : '' }}</span></h2>
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <h2 class="text-[13px] font-semibold text-gray-700">SEO-Signale <span class="text-[10px] font-normal text-gray-400">· zentral gemessen{{ $centralAuthoritative ? ' · maßgeblich' : '' }}</span></h2>
+                            @if($seoRecCount > 0)
+                                <button wire:click="importSeoRecommendations" wire:loading.attr="disabled"
+                                        class="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors disabled:opacity-50">
+                                    @svg('heroicon-o-bolt', 'w-3.5 h-3.5')
+                                    <span>{{ $seoRecCount }} Empfehlung(en) in Signale übernehmen</span>
+                                </button>
+                            @endif
+                        </div>
+                        @if($seoImportNotice)
+                            <div class="mb-3 text-[11px] text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">{{ $seoImportNotice }}</div>
+                        @endif
                         @foreach($seoWebsiteUrls as $u)
                             @php $s = $seoSignals[$u->id] ?? null; @endphp
                             @if($s)
@@ -425,6 +437,19 @@
                                     @foreach(array_slice($s['rankings'], 0, 6) as $r)
                                         <span class="text-[10px] px-1.5 py-0.5 bg-gray-50 border border-gray-200 rounded text-gray-600">{{ $r['keyword'] }} · #{{ $r['position'] }}</span>
                                     @endforeach
+                                </div>
+                                @endif
+                                @if(!empty($s['recommendations']))
+                                <div class="mt-3 pt-3 border-t border-gray-100">
+                                    <div class="text-[10px] text-gray-400 uppercase tracking-wider mb-1.5">Empfohlene Maßnahmen</div>
+                                    <div class="space-y-1">
+                                        @foreach(array_slice($s['recommendations'], 0, 5) as $rec)
+                                            <div class="flex items-start gap-2 text-[12px]">
+                                                <span class="inline-flex w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 {{ in_array(strtolower($rec['severity'] ?? ''), ['critical','high','error','action','danger']) ? 'bg-red-400' : (in_array(strtolower($rec['severity'] ?? ''), ['medium','warning','warn','watch']) ? 'bg-yellow-400' : 'bg-blue-300') }}"></span>
+                                                <span class="text-gray-700">{{ $rec['title'] }}</span>
+                                            </div>
+                                        @endforeach
+                                    </div>
                                 </div>
                                 @endif
                             </div>

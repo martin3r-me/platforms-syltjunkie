@@ -30,6 +30,8 @@ class EntityDetail extends Component
     public ?int $primaryTypeId = null;
     public string $typeSearch = '';
 
+    public ?string $seoImportNotice = null;
+
     public function mount(SjEntity $entity): void
     {
         abort_unless($entity->team_id === Auth::user()->currentTeam->id, 403);
@@ -148,6 +150,70 @@ class EntityDetail extends Component
         $this->entity->images()->updateExistingPivot($imageId, ['is_primary' => true]);
     }
 
+    /**
+     * Zentrale SEO-Empfehlungen (Keystone) in Syltjunkies Handlungs-Inbox
+     * (SjTrendSignal) materialisieren — aus Messung wird Aktion.
+     *
+     * Idempotent: pro Empfehlung wird über einen stabilen Ref-Schlüssel geprüft,
+     * ob bereits ein Signal existiert (auch erledigte werden nicht neu erzeugt).
+     * Das zentrale SEO-Modul bleibt Quelle der Empfehlung; hier entsteht nur der
+     * lokale Handlungs-Marker — kein paralleles SEO-Measurement (S4-konform).
+     */
+    public function importSeoRecommendations(): void
+    {
+        $entityUrlIds = $this->entity->entityUrls()->pluck('id');
+        if ($entityUrlIds->isEmpty() || ! app()->bound(\Platform\Core\Contracts\SeoSignalServiceInterface::class)) {
+            return;
+        }
+
+        $signals = app(\Platform\Core\Contracts\SeoSignalServiceInterface::class)
+            ->getSignalsBySource((int) $this->entity->team_id, 'syltjunkie', $entityUrlIds->all());
+
+        $imported = 0;
+        foreach ($signals as $urlId => $s) {
+            foreach ($s['recommendations'] ?? [] as $rec) {
+                $ref = 'seo:'.$urlId.':'.($rec['type'] ?? '').':'.md5((string) ($rec['title'] ?? ''));
+
+                $exists = SjTrendSignal::where('entity_id', $this->entity->id)
+                    ->where('signal_type', 'seo_recommendation')
+                    ->where('context->ref', $ref)
+                    ->exists();
+                if ($exists) {
+                    continue;
+                }
+
+                SjTrendSignal::create([
+                    'entity_id' => $this->entity->id,
+                    'entity_url_id' => (int) $urlId,
+                    'signal_type' => 'seo_recommendation',
+                    'severity' => $this->mapRecSeverity($rec['severity'] ?? null),
+                    'title' => $rec['title'] ?? 'SEO-Empfehlung',
+                    'description' => 'Zentrale SEO-Empfehlung · zentral gemessen',
+                    'detected_at' => now(),
+                    'status' => 'new',
+                    'context' => ['source' => 'seo', 'ref' => $ref, 'rec_type' => $rec['type'] ?? null],
+                ]);
+                $imported++;
+            }
+        }
+
+        $this->seoImportNotice = $imported > 0
+            ? "{$imported} SEO-Empfehlung(en) in die Signale übernommen."
+            : 'Keine neuen SEO-Empfehlungen — alles bereits übernommen.';
+    }
+
+    /**
+     * Zentrale Severity-Vokabeln defensiv auf Syltjunkies Enum (info/watch/action) mappen.
+     */
+    protected function mapRecSeverity(?string $severity): string
+    {
+        return match (strtolower((string) $severity)) {
+            'critical', 'high', 'error', 'action', 'danger' => 'action',
+            'medium', 'warning', 'warn', 'watch' => 'watch',
+            default => 'info',
+        };
+    }
+
     public function render()
     {
         $this->entity->load([
@@ -176,6 +242,12 @@ class EntityDetail extends Component
         // die lokale Ranking-Ansicht als Fallback sichtbar (kein Blank-State).
         $seoMode = config('syltjunkie.seo.mode', 'hybrid');
         $centralAuthoritative = $seoMode === 'central' && !empty($seoSignals);
+
+        // Offene zentrale SEO-Empfehlungen (für „In Signale übernehmen").
+        $seoRecCount = 0;
+        foreach ($seoSignals as $s) {
+            $seoRecCount += count($s['recommendations'] ?? []);
+        }
 
         // Keyword-Rankings für alle Entity-URLs (latest per keyword) — lokal.
         $keywordRankings = collect();
@@ -248,6 +320,7 @@ class EntityDetail extends Component
             'entitySignals' => $entitySignals,
             'seoSignals' => $seoSignals,
             'centralAuthoritative' => $centralAuthoritative,
+            'seoRecCount' => $seoRecCount,
             'entityImages' => $entityImages,
             'entityPosts' => $entityPosts,
             'currentWeather' => $currentWeather,

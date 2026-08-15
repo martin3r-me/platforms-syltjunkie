@@ -39,6 +39,7 @@ class SyltjunkieServiceProvider extends ServiceProvider
             PlatformCore::registerModule([
                 'key'        => 'syltjunkie',
                 'title'      => 'Syltjunkie',
+                'group'      => 'digital',
                 'routing'    => config('syltjunkie.routing'),
                 'guard'      => config('syltjunkie.guard'),
                 'navigation' => config('syltjunkie.navigation'),

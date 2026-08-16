@@ -61,6 +61,9 @@ class SjEntityUrlObserver
                 'reason' => 'discovered',
                 'is_own' => true,
                 'priority' => $url->is_primary ? 80 : 60,
+                // Syltjunkie-URLs bleiben Plausible-opt-out (fremde Instanz,
+                // kein Traffic hier) — bis sie bewusst zugeordnet werden.
+                'plausible_enabled' => false,
             ]);
         } catch (\Throwable $e) {
             // bewusst geschluckt (siehe deleted())

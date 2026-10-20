@@ -4,7 +4,6 @@ namespace Platform\Syltjunkie;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Platform\Core\PlatformCore;
@@ -34,7 +33,7 @@ class SyltjunkieServiceProvider extends ServiceProvider
         if (
             config()->has('syltjunkie.routing') &&
             config()->has('syltjunkie.navigation') &&
-            Schema::hasTable('modules')
+            PlatformCore::modulesTableExists()
         ) {
             PlatformCore::registerModule([
                 'key'        => 'syltjunkie',
